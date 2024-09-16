@@ -6,17 +6,19 @@ import os
 
 SIGN_MIN_SIZE = 20
 SIGN_MAX_SIZE = 100
-IMAGE_SIZE = 640
+IMAGE_SIZE = 512
 
 SIGN_DIR = "data/signs"
 BACKGROUND_IMG_DIR = "datasets/base_img"
-DATASET_ROOT_DIR = "datasets/test_dataset/test"
+DATASET_ROOT_DIR = "datasets/test_dataset/train"
 OUTPUT_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "img")
 OUTPUT_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "labels")
 
 
 class Yolo_annotation:
-    def __init__(self, id: int, center_x: float, center_y: float, width: float, height: float):
+    def __init__(
+        self, id: int, center_x: float, center_y: float, width: float, height: float
+    ):
         self.id = id
         self.x = center_x
         self.y = center_y
@@ -83,14 +85,14 @@ if __name__ == "__main__":
             )  # Chooses random 5 signs to put into a picture
             annot_list = []
             background = Image.open(f"{BACKGROUND_IMG_DIR}/{filename}")
-            background.thumbnail((IMAGE_SIZE, IMAGE_SIZE))
+            background = background.resize((IMAGE_SIZE, IMAGE_SIZE))
             for idx, sign_path in signs:
                 sign = Image.open(f"{SIGN_DIR}/{sign_path}").convert("RGBA")
                 new_width, new_height = (
                     random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
                     random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
                 )
-                sign.thumbnail((new_width, new_height))
+                sign.thumbnail((new_width, new_height)) 
                 pos_x, pos_y = (
                     random.randint(0, background.size[0] - sign.size[0]),
                     random.randint(0, background.size[1] - sign.size[1]),
