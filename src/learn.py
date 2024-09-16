@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class TrafficSignDataset(Dataset):
-    def __init__(self, root_dir, annotations_path, img_dir, label_dir):
+    def __init__(self, root_dir: str, annotations_path: str, img_dir: str, label_dir: str):
         self.root_dir = root_dir
         self.annotations = pd.read_csv(os.path.join(root_dir, annotations_path))
         self.img_dir = os.path.join(root_dir, img_dir)
@@ -34,5 +34,6 @@ class TrafficSignDataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = TrafficSignDataset("datasets/test_dataset", "annotation.csv", "imgs", "labels")
+    train_dataset = TrafficSignDataset("datasets/test_dataset/train", "annotation.csv", "imgs", "labels")
+    test_dataset = TrafficSignDataset("datasets/test_dataset/test", "annotation.csv", "imgs", "labels")
 
