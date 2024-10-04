@@ -13,85 +13,207 @@ from torchvision.models.detection import (
     fasterrcnn_resnet50_fpn_v2,
     FasterRCNN_ResNet50_FPN_V2_Weights,
 )
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 
+from traffic_sign_dataset import TrafficSignDataset
 
-class TrafficSignDataset(Dataset):
-    def __init__(
-        self,
-        root_dir: str,
-        annotations_path: str,
-        img_dir: str,
-        label_dir: str,
-        transform,
-    ):
-        self.root_dir = root_dir
-        self.annotations = pd.read_csv(os.path.join(root_dir, annotations_path))
-        self.img_dir = os.path.join(root_dir, img_dir)
-        self.label_dir = os.path.join(root_dir, label_dir)
-        self.transform = transform
+NUM_CLASSES = 43
+OUTPUT_MODEL_DICT = "models/"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    def __len__(self):
-        return len(self.annotations)
 
-    def __getitem__(self, index):
-        file_name = self.annotations.iloc[index].iloc[0]
-        img_file_path = os.path.join(self.img_dir, file_name)
-        img = Image.open(img_file_path)
-        img = self.transform(img)
-        print(img.shape)
-        # if self.transform:
-        #     img = self.transform(img)
-        # tensor_img = torch.tensor(img)
+def train(model, data_loader):
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
 
-        label_file_path = os.path.join(self.label_dir, file_name + ".txt")
-        tensor_labels = []
-        with open(label_file_path, "r") as f:
-            labels = []
-            for line in f.readlines():
-                tokens = [
-                    int(float(i)) if int(float(i)) == float(i) else float(i)
-                    for i in line.split(" ")
-                ]
-                labels.append(tokens)
-            tensor_labels = torch.tensor(labels)
-        return (img, tensor_labels)
+    # and a learning rate scheduler
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
+    num_epochs = 4
+    model.train()
+    epoch_losses = [0]
+    for epoch in range(num_epochs):
+        epoch_loss = 0
+        # train for one epoch, printing every 10 iterations
+        for idx, (img, targets) in enumerate(data_loader):
+            img = torch.stack(img).to(device)
+            targets = [
+                {
+                    "boxes": target["boxes"].to(device),
+                    "labels": target["labels"].to(device),
+                }
+                for target in targets
+            ]
+            optimizer.zero_grad()
+            losses = model(img.to(device), targets)
+            # print(losses)
+            loss = sum([loss for loss in losses.values()])
+            loss.backward()
+            optimizer.step()
+            # print(loss)
+            epoch_loss += loss.item()
+        # update the learning rate
+        lr_scheduler.step()
+        epoch_loss_avg = epoch_loss / len(data_loader)
+        print(f"Avg Epoch loss {epoch_loss_avg}")
+        if len(epoch_losses) == 0:
+            epoch_losses.append(epoch_loss_avg)
+        if epoch_losses[-1] <= epoch_loss_avg:
+            output_path = os.path.join(OUTPUT_MODEL_DICT, str(epoch_loss_avg) + ".pt")
+            torch.save(
+                {
+                    "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "lr_scheduler": lr_scheduler.state_dict(),
+                },
+                output_path,
+            )
+
+        epoch_losses.append(epoch_loss_avg)
+
+
+def load_model(model_name):
+    model = fasterrcnn_resnet50_fpn_v2()
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES).to(
+        device
+    )
+    weights_dict = torch.load(model_name, device, weights_only=True)
+    model.load_state_dict(weights_dict["model"])
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = optimizer = torch.optim.SGD(
+        params, lr=0.005, momentum=0.9, weight_decay=0.0005
+    )
+    optimizer.load_state_dict(weights_dict["optimizer"])
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
+    scheduler.load_state_dict(weights_dict["scheduler"])
+    return (model, optimizer, scheduler)
+
+
+def create_mapping_dict(sign_dir):
+    sign_dict = {0: "background"}
+    for filename in os.listdir(sign_dir):
+        idx = int(filename[: filename.find("_")]) + 1
+        sign_dict[idx] = filename[filename.find("_") + 1 : filename.find(".")]
+
+    return sign_dict
+
+
+def custom_collate_fn(batch):
+    images, targets = zip(*batch)
+    # Optionally stack images into a batch
+    images = torch.stack(images)
+    targets = list(targets)
+    # No need to stack target['boxes'] and 'labels' since you may want them as lists
+    return images, targets[0]
 
 
 if __name__ == "__main__":
     train_dataset = TrafficSignDataset(
-        "datasets/test_dataset/train", "annotation.csv", "img", "labels", ToTensor()
+        "datasets/test_dataset/new", "annotation.csv", "img", "labels", ToTensor()
     )
     test_dataset = TrafficSignDataset(
         "datasets/test_dataset/test", "annotation.csv", "img", "labels", ToTensor()
     )
     print(len(train_dataset), len(test_dataset))
-
-    training_loader = DataLoader(train_dataset, shuffle=True)
-    validation_loader = DataLoader(test_dataset, shuffle=False)
-
-    dataiter = iter(training_loader)
-    images, labels = next(dataiter)
-
-    images = images[0]
+    mapping_dict = create_mapping_dict("data/signs")
 
     weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-    model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.9)
+    model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.6).train()
+    model.to(device)
+
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES).to(
+        device
+    )
+
+    training_loader = DataLoader(
+        train_dataset,
+        shuffle=True,
+        batch_size=1,
+        collate_fn=lambda batch: tuple(
+            zip(*batch)
+        ),  # https://pytorch.org/vision/stable/auto_examples/transforms/plot_transforms_e2e.html#sphx-glr-auto-examples-transforms-plot-transforms-e2e-py
+    )
+
+    # for imgs, targets in training_loader:
+    #     imgs = [img.to(device) for img in imgs]
+    #     targets = [
+    #         {"boxes": target["boxes"].to(device), "labels": target["labels"].to(device)}
+    #         for target in targets
+    #     ]
+    #     loss_dict = model(imgs, targets)
+
+    #     for name, loss_val in loss_dict.items():
+    #         print(f"{name:<20}{loss_val:.3f}")
+
+    train(model, training_loader)
+
     model.eval()
+    testing_loader = DataLoader(test_dataset, collate_fn=custom_collate_fn)
+    data_iter = iter(testing_loader)
+    image, label = next(data_iter)
+    # print(label)
+    device = torch.device("cpu")
+    model = model.to(device)
+    image = image.to(device)
 
     preprocess = weights.transforms()
+    batch = [preprocess(image)]
 
-    batch = [preprocess(images)]
-    prediction = model(batch)[0]
-    labels = [weights.meta["categories"][i] for i in prediction["labels"]]
-    box = draw_bounding_boxes(
-        images,
-        boxes=prediction["boxes"],
-        labels=labels,
-        colors="red",
-        width=4,
-        font_size=30,
-    )
-    im = to_pil_image(box.detach())
+    im = to_pil_image(image[0])
     im.show()
+    predictions = model(image)
+    print(predictions)
+    print(type(predictions[0]["labels"]))
+    labels = [mapping_dict[int(id)] for id in predictions[0]["labels"]]
+    print(predictions)
+    print(labels)
+    # boxes = torch.tensor(
+    #     [
+    #         [134.4126, 152.6398, 186.7712, 200.0036],
+    #         [302.9673, 175.2862, 380.8156, 236.9193],
+    #         [297.1067, 311.1100, 333.6919, 344.6310],
+    #     ]
+    # )
+    # labels = [7, 7, 21]
+    # labels = [mapping_dict[id + 1] for id in labels]
+    # box = draw_bounding_boxes(
+    #     image[0],
+    #     boxes=boxes,
+    #     labels=labels,
+    #     colors="red",
+    #     width=4,
+    #     font_size=30,
+    # )
+    # im = to_pil_image(box.detach())
+    # im.show()
+
+    # dataiter = iter(training_loader)
+    # images, labels = next(dataiter)
+
+    # print(len(images))
+
+    # # print(images)
+    # images = images[0]
+
+    # weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+    # model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.9)
+    # model.eval()
+
+    # preprocess = weights.transforms()
+
+    # batch = [preprocess(images)]
+    # prediction = model(batch)[0]
+    # labels = [weights.meta["categories"][i] for i in prediction["labels"]]
+    # box = draw_bounding_boxes(
+    #     images,
+    #     boxes=prediction["boxes"],
+    #     labels=labels,
+    #     colors="red",
+    #     width=4,
+    #     font_size=30,
+    # )
+    # im = to_pil_image(box.detach())
+    # im.show()

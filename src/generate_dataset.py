@@ -4,13 +4,13 @@ import torch
 from torchvision.transforms import v2
 import os
 
-SIGN_MIN_SIZE = 20
-SIGN_MAX_SIZE = 100
+SIGN_MIN_SIZE = 60
+SIGN_MAX_SIZE = 120
 IMAGE_SIZE = 512
 
 SIGN_DIR = "data/signs"
 BACKGROUND_IMG_DIR = "datasets/base_img"
-DATASET_ROOT_DIR = "datasets/test_dataset/train"
+DATASET_ROOT_DIR = "datasets/test_dataset/new"
 OUTPUT_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "img")
 OUTPUT_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "labels")
 
@@ -42,10 +42,19 @@ def load_signs() -> dict:
 def get_merged_background_sign(background: Image, sign: Image, position: tuple):
     # sign2 = Image.composite(sign, Image.new("RGB", sign.size, "white"), sign)
 
-    augmentor = v2.RandAugment()
-    sign_converted = sign.convert("RGB")
-    sign3 = augmentor(sign_converted)
-    background.paste(sign3, position, sign)
+    # augmentor = v2.AutoAugment() # Old method, not maybe that useful
+    sign_converted = sign.convert("RGBA")
+    # sign3 = augmentor(sign_converted)
+    transforms = v2.RandomApply(
+        transforms=[
+            v2.RandomAffine(degrees=(5, 10), fill=(0, 0, 0, 0)),
+            v2.RandomPerspective(distortion_scale=0.3, p=1, fill=(0, 0, 0, 0)),
+            v2.RandomRotation(degrees=(5, 10))
+        ]
+    )
+
+    sign3 = transforms(sign_converted)
+    background.paste(sign3, position, sign3)
 
     return background
 
@@ -92,7 +101,7 @@ if __name__ == "__main__":
                     random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
                     random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
                 )
-                sign.thumbnail((new_width, new_height)) 
+                sign.thumbnail((new_width, new_height))
                 pos_x, pos_y = (
                     random.randint(0, background.size[0] - sign.size[0]),
                     random.randint(0, background.size[1] - sign.size[1]),
