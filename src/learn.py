@@ -2,13 +2,8 @@ import torch
 import os
 
 from PIL import Image
-import pandas as pd
 from torch.utils.data import Dataset, DataLoader
-import torchvision
-from torchvision.io.image import decode_image
 from torchvision.transforms import ToTensor
-import matplotlib.pyplot as plt
-import numpy as np
 from torchvision.models.detection import (
     fasterrcnn_resnet50_fpn_v2,
     FasterRCNN_ResNet50_FPN_V2_Weights,
@@ -20,7 +15,10 @@ from torchvision.transforms.functional import to_pil_image
 from traffic_sign_dataset import TrafficSignDataset
 
 NUM_CLASSES = 43
+NUM_EPOCHS = 3
 OUTPUT_MODEL_DICT = "models/"
+BASE_DATASET_DIR = "datasets"
+DATASET_NAME = "10_000"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -28,14 +26,12 @@ def train(model, data_loader):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
 
-    # and a learning rate scheduler
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
-    num_epochs = 4
     model.train()
     epoch_losses = [0]
-    for epoch in range(num_epochs):
+    for epoch in range(NUM_EPOCHS):
         epoch_loss = 0
-        # train for one epoch, printing every 10 iterations
+
         for idx, (img, targets) in enumerate(data_loader):
             img = torch.stack(img).to(device)
             targets = [
@@ -47,11 +43,11 @@ def train(model, data_loader):
             ]
             optimizer.zero_grad()
             losses = model(img.to(device), targets)
-            # print(losses)
+            
             loss = sum([loss for loss in losses.values()])
             loss.backward()
             optimizer.step()
-            # print(loss)
+            
             epoch_loss += loss.item()
         # update the learning rate
         lr_scheduler.step()
@@ -59,7 +55,7 @@ def train(model, data_loader):
         print(f"Avg Epoch loss {epoch_loss_avg}")
         if len(epoch_losses) == 0:
             epoch_losses.append(epoch_loss_avg)
-        if epoch_losses[-1] <= epoch_loss_avg:
+        if epoch_losses[-1] >= epoch_loss_avg:
             output_path = os.path.join(OUTPUT_MODEL_DICT, str(epoch_loss_avg) + ".pt")
             torch.save(
                 {
@@ -111,12 +107,12 @@ def custom_collate_fn(batch):
 
 if __name__ == "__main__":
     train_dataset = TrafficSignDataset(
-        "datasets/test_dataset/new", "annotation.csv", "img", "labels", ToTensor()
+        os.path.join(BASE_DATASET_DIR, DATASET_NAME), "annotation.csv", "img", "labels", ToTensor()
     )
-    test_dataset = TrafficSignDataset(
-        "datasets/test_dataset/test", "annotation.csv", "img", "labels", ToTensor()
-    )
-    print(len(train_dataset), len(test_dataset))
+    # test_dataset = TrafficSignDataset(
+    #     "datasets/test_dataset/test", "annotation.csv", "img", "labels", ToTensor()
+    # )
+    print(len(train_dataset))
     mapping_dict = create_mapping_dict("data/signs")
 
     weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
@@ -137,39 +133,28 @@ if __name__ == "__main__":
         ),  # https://pytorch.org/vision/stable/auto_examples/transforms/plot_transforms_e2e.html#sphx-glr-auto-examples-transforms-plot-transforms-e2e-py
     )
 
-    # for imgs, targets in training_loader:
-    #     imgs = [img.to(device) for img in imgs]
-    #     targets = [
-    #         {"boxes": target["boxes"].to(device), "labels": target["labels"].to(device)}
-    #         for target in targets
-    #     ]
-    #     loss_dict = model(imgs, targets)
-
-    #     for name, loss_val in loss_dict.items():
-    #         print(f"{name:<20}{loss_val:.3f}")
-
     train(model, training_loader)
 
-    model.eval()
-    testing_loader = DataLoader(test_dataset, collate_fn=custom_collate_fn)
-    data_iter = iter(testing_loader)
-    image, label = next(data_iter)
-    # print(label)
-    device = torch.device("cpu")
-    model = model.to(device)
-    image = image.to(device)
+    # model.eval()
+    # testing_loader = DataLoader(test_dataset, collate_fn=custom_collate_fn)
+    # data_iter = iter(testing_loader)
+    # image, label = next(data_iter)
+    # # print(label)
+    # device = torch.device("cpu")
+    # model = model.to(device)
+    # image = image.to(device)
 
-    preprocess = weights.transforms()
-    batch = [preprocess(image)]
+    # preprocess = weights.transforms()
+    # batch = [preprocess(image)]
 
-    im = to_pil_image(image[0])
-    im.show()
-    predictions = model(image)
-    print(predictions)
-    print(type(predictions[0]["labels"]))
-    labels = [mapping_dict[int(id)] for id in predictions[0]["labels"]]
-    print(predictions)
-    print(labels)
+    # im = to_pil_image(image[0])
+    # im.show()
+    # predictions = model(image)
+    # print(predictions)
+    # print(type(predictions[0]["labels"]))
+    # labels = [mapping_dict[int(id)] for id in predictions[0]["labels"]]
+    # print(predictions)
+    # print(labels)
     # boxes = torch.tensor(
     #     [
     #         [134.4126, 152.6398, 186.7712, 200.0036],
