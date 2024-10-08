@@ -9,8 +9,8 @@ SIGN_MAX_SIZE = 120
 IMAGE_SIZE = 512
 
 SIGN_DIR = "data/signs"
-BACKGROUND_IMG_DIR = "datasets/base_img"
-DATASET_ROOT_DIR = "datasets/test_dataset/new"
+BACKGROUND_IMG_DIR = "background_photos"
+DATASET_ROOT_DIR = "datasets/10_000"
 OUTPUT_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "img")
 OUTPUT_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "labels")
 

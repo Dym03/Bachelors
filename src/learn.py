@@ -15,7 +15,7 @@ from torchvision.transforms.functional import to_pil_image
 from traffic_sign_dataset import TrafficSignDataset
 
 NUM_CLASSES = 43
-NUM_EPOCHS = 3
+NUM_EPOCHS = 4
 OUTPUT_MODEL_DICT = "models/"
 BASE_DATASET_DIR = "datasets"
 DATASET_NAME = "10_000"
@@ -49,13 +49,13 @@ def train(model, data_loader):
             optimizer.step()
             
             epoch_loss += loss.item()
-        # update the learning rate
+            if idx % 500 == 0:
+                print(f"Epoch : {epoch} img number {idx} out of {len(data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}")
+        # update the learning rate       
         lr_scheduler.step()
         epoch_loss_avg = epoch_loss / len(data_loader)
         print(f"Avg Epoch loss {epoch_loss_avg}")
-        if len(epoch_losses) == 0:
-            epoch_losses.append(epoch_loss_avg)
-        if epoch_losses[-1] >= epoch_loss_avg:
+        if len(epoch_losses) == 0 or epoch_losses[-1] >= epoch_loss_avg:
             output_path = os.path.join(OUTPUT_MODEL_DICT, str(epoch_loss_avg) + ".pt")
             torch.save(
                 {
@@ -106,6 +106,7 @@ def custom_collate_fn(batch):
 
 
 if __name__ == "__main__":
+    print(device)
     train_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME), "annotation.csv", "img", "labels", ToTensor()
     )
