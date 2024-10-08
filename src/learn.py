@@ -29,7 +29,7 @@ def train(model, data_loader):
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
     model.train()
     epoch_losses = [0]
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(NUM_EPOCHS): 
         epoch_loss = 0
 
         for idx, (img, targets) in enumerate(data_loader):
