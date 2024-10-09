@@ -22,6 +22,18 @@ DATASET_NAME = "10_000"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+def save_model(epoch_loss, model, optimizer, lr_scheduler):
+    output_path = os.path.join(OUTPUT_MODEL_DICT, str(epoch_loss) + ".pt")
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "lr_scheduler": lr_scheduler.state_dict(),
+        },
+        output_path,
+    )
+
+
 def train(model, data_loader):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
@@ -29,7 +41,7 @@ def train(model, data_loader):
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
     model.train()
     epoch_losses = [0]
-    for epoch in range(NUM_EPOCHS): 
+    for epoch in range(NUM_EPOCHS):
         epoch_loss = 0
 
         for idx, (img, targets) in enumerate(data_loader):
@@ -43,34 +55,28 @@ def train(model, data_loader):
             ]
             optimizer.zero_grad()
             losses = model(img.to(device), targets)
-            
+
             loss = sum([loss for loss in losses.values()])
             loss.backward()
             optimizer.step()
-            
+
             epoch_loss += loss.item()
             if idx % 500 == 0:
-                print(f"Epoch : {epoch} img number {idx} out of {len(data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}")
-        # update the learning rate       
+                print(
+                    f"Epoch : {epoch} img number {idx} out of {len(data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}"
+                )
+        # update the learning rate
         lr_scheduler.step()
         epoch_loss_avg = epoch_loss / len(data_loader)
         print(f"Avg Epoch loss {epoch_loss_avg}")
         if len(epoch_losses) == 0 or epoch_losses[-1] >= epoch_loss_avg:
-            output_path = os.path.join(OUTPUT_MODEL_DICT, str(epoch_loss_avg) + ".pt")
-            torch.save(
-                {
-                    "model": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                    "lr_scheduler": lr_scheduler.state_dict(),
-                },
-                output_path,
-            )
+            save_model(epoch_loss_avg, model, optimizer, lr_scheduler)
 
         epoch_losses.append(epoch_loss_avg)
 
 
-def load_model(model_name):
-    model = fasterrcnn_resnet50_fpn_v2()
+def load_model(model_name, device, box_score_thresh=0.6):
+    model = fasterrcnn_resnet50_fpn_v2(box_score_thresh = box_score_thresh)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES).to(
         device
@@ -81,9 +87,9 @@ def load_model(model_name):
     optimizer = optimizer = torch.optim.SGD(
         params, lr=0.005, momentum=0.9, weight_decay=0.0005
     )
-    optimizer.load_state_dict(weights_dict["optimizer"])
+    # optimizer.load_state_dict(weights_dict["optimizer"])
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
-    scheduler.load_state_dict(weights_dict["scheduler"])
+    # scheduler.load_state_dict(weights_dict["scheduler"])
     return (model, optimizer, scheduler)
 
 
@@ -108,7 +114,11 @@ def custom_collate_fn(batch):
 if __name__ == "__main__":
     print(device)
     train_dataset = TrafficSignDataset(
-        os.path.join(BASE_DATASET_DIR, DATASET_NAME), "annotation.csv", "img", "labels", ToTensor()
+        os.path.join(BASE_DATASET_DIR, DATASET_NAME),
+        "annotation.csv",
+        "img",
+        "labels",
+        ToTensor(),
     )
     # test_dataset = TrafficSignDataset(
     #     "datasets/test_dataset/test", "annotation.csv", "img", "labels", ToTensor()
