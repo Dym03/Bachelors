@@ -11,14 +11,16 @@ from torchvision.models.detection import (
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
-
+from torchvision.ops import box_iou
 from traffic_sign_dataset import TrafficSignDataset
+from torcheval.metrics import MulticlassAccuracy
 
 NUM_CLASSES = 43
 NUM_EPOCHS = 4
 OUTPUT_MODEL_DICT = "models/"
 BASE_DATASET_DIR = "datasets"
-DATASET_NAME = "10_000"
+# DATASET_NAME = "10_000"
+DATASET_NAME = "test_dataset/new"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -34,6 +36,97 @@ def save_model(epoch_loss, model, optimizer, lr_scheduler):
     )
 
 
+def evaluate(model, data_loader):
+    total_iou = 0.0
+    total_samples = 0
+    metric = MulticlassAccuracy(num_classes=NUM_CLASSES).to(device)
+    model.eval()
+    with torch.no_grad():
+        for idx, (img, targets) in enumerate(data_loader):
+            img = torch.stack(img).to(device)
+            targets = [
+                {
+                    "boxes": target["boxes"].to(device),
+                    "labels": target["labels"].to(device),
+                }
+                for target in targets
+            ]
+            for image in img:
+                predictions = model(img)
+                matched_pred_labels, matched_true_labels, avg_iou = (
+                    match_boxes_and_calculate_iou(
+                        predictions[0]["boxes"],
+                        predictions[0]["labels"],
+                        targets[0]["boxes"],
+                        targets[0]["labels"],
+                    )
+                )
+                total_iou += avg_iou
+                total_samples += 1
+                if len(matched_pred_labels) > 0:
+                    metric.update(matched_pred_labels, matched_true_labels)
+
+    mean_iou = total_iou / total_samples if total_samples > 0 else 0.0
+
+    # Finalize label accuracy
+    label_accuracy = metric.compute().item()
+    if torch.isnan(label_accuracy):
+        label_accuracy = 0.0
+
+    return mean_iou, label_accuracy
+
+
+def match_boxes_and_calculate_iou(
+    pred_boxes, pred_labels, true_boxes, true_labels, iou_threshold=0.5
+):
+    """
+    Match predicted boxes and labels with ground truth and calculate IoU.
+
+    Args:
+        pred_boxes (Tensor): Predicted bounding boxes (N x 4).
+        pred_labels (Tensor): Predicted labels (N).
+        true_boxes (Tensor): Ground truth bounding boxes (M x 4).
+        true_labels (Tensor): Ground truth labels (M).
+        iou_threshold (float): IoU threshold for matching.
+
+    Returns:
+        matched_pred_labels (list): List of matched predicted labels.
+        matched_true_labels (list): List of matched true labels.
+        avg_iou (float): Average IoU for matched boxes.
+    """
+    if pred_boxes.size(0) == 0 or true_boxes.size(0) == 0:
+        # No predictions or ground truth
+        return [], [], 0.0
+
+    # Compute IoU matrix
+    iou_matrix = box_iou(pred_boxes, true_boxes)
+
+    # Match predictions to ground truth using IoU threshold
+    matched_pred_indices = []
+    matched_true_indices = []
+    iou_scores = []
+
+    for i, row in enumerate(iou_matrix):
+        max_iou, max_idx = row.max(0)
+        if max_iou >= iou_threshold:
+            matched_pred_indices.append(i)
+            matched_true_indices.append(max_idx.item())
+            iou_scores.append(max_iou.item())
+
+    # Get matched labels
+    matched_pred_labels = (
+        pred_labels[matched_pred_indices] if matched_pred_indices else []
+    )
+    matched_true_labels = (
+        true_labels[matched_true_indices] if matched_true_indices else []
+    )
+
+    # Calculate average IoU
+    avg_iou = sum(iou_scores) / len(iou_scores) if iou_scores else 0.0
+
+    return matched_pred_labels, matched_true_labels, avg_iou
+
+
 def train(model, data_loader):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
@@ -43,6 +136,7 @@ def train(model, data_loader):
     epoch_losses = [0]
     for epoch in range(NUM_EPOCHS):
         epoch_loss = 0
+        model.train()
 
         for idx, (img, targets) in enumerate(data_loader):
             img = torch.stack(img).to(device)
@@ -66,6 +160,9 @@ def train(model, data_loader):
                     f"Epoch : {epoch} img number {idx} out of {len(data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}"
                 )
         # update the learning rate
+        mean_iou, label_accuracy = evaluate(model, data_loader)
+        print(f"Mean IoU: {mean_iou}, Label Accuracy: {label_accuracy}")
+
         lr_scheduler.step()
         epoch_loss_avg = epoch_loss / len(data_loader)
         print(f"Avg Epoch loss {epoch_loss_avg}")
@@ -76,7 +173,7 @@ def train(model, data_loader):
 
 
 def load_model(model_name, device, box_score_thresh=0.6):
-    model = fasterrcnn_resnet50_fpn_v2(box_score_thresh = box_score_thresh)
+    model = fasterrcnn_resnet50_fpn_v2(box_score_thresh=box_score_thresh)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES).to(
         device

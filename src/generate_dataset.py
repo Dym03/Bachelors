@@ -32,7 +32,7 @@ class Yolo_annotation:
 def load_signs() -> dict:
     sign_dict = {}
     for filename in os.listdir(SIGN_DIR):
-        idx = filename[: filename.find("_")]
+        idx = int(filename[: filename.find("_")]) + 1
         print(idx, filename)
         sign_dict[idx] = filename
 
