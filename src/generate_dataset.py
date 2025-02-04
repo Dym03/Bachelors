@@ -3,6 +3,8 @@ import random
 import torch
 from torchvision.transforms import v2
 import os
+from enum import Enum
+from generate_yaml import create_yaml
 
 SIGN_MIN_SIZE = 60
 SIGN_MAX_SIZE = 120
@@ -11,8 +13,15 @@ IMAGE_SIZE = 512
 SIGN_DIR = "data/signs"
 BACKGROUND_IMG_DIR = "background_photos"
 DATASET_ROOT_DIR = "datasets/10_000"
-OUTPUT_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "img")
-OUTPUT_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "labels")
+TRAIN_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "train", "images")
+TRAIN_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "train", "labels")
+VALIDATION_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "val", "images")
+VALIDATION_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "val", "labels")
+
+
+class SAVE_MODE(Enum):
+    TRAIN = 1
+    VALIDATION = 2
 
 
 class Yolo_annotation:
@@ -49,7 +58,7 @@ def get_merged_background_sign(background: Image, sign: Image, position: tuple):
         transforms=[
             v2.RandomAffine(degrees=(5, 10), fill=(0, 0, 0, 0)),
             v2.RandomPerspective(distortion_scale=0.3, p=1, fill=(0, 0, 0, 0)),
-            v2.RandomRotation(degrees=(5, 10))
+            v2.RandomRotation(degrees=(5, 10)),
         ]
     )
 
@@ -59,8 +68,18 @@ def get_merged_background_sign(background: Image, sign: Image, position: tuple):
     return background
 
 
-def write_annotation(image_name: str, yolo_annots: list[Yolo_annotation]):
-    with open(f"{OUTPUT_LABEL_DIR}/{image_name}.txt", "w") as file:
+def write_annotation(
+    image_name: str, yolo_annots: list[Yolo_annotation], mode: SAVE_MODE
+):
+    annot_file_path = ""
+    if mode == SAVE_MODE.TRAIN:
+        annot_file_path = TRAIN_LABEL_DIR
+    elif mode == SAVE_MODE.VALIDATION:
+        annot_file_path = VALIDATION_LABEL_DIR
+
+    with open(
+        f"{annot_file_path}/{image_name[0 : image_name.find('.')]}.txt", "w"
+    ) as file:
         for annot in yolo_annots:
             file.write(repr(annot))
 
@@ -68,14 +87,12 @@ def write_annotation(image_name: str, yolo_annots: list[Yolo_annotation]):
 def prepare_dirs():
     if not os.path.isdir(DATASET_ROOT_DIR):
         os.mkdir(DATASET_ROOT_DIR)
-        os.mkdir(OUTPUT_IMG_DIR)
-        os.mkdir(OUTPUT_LABEL_DIR)
-    elif not os.path.isdir(OUTPUT_IMG_DIR):
-        os.mkdir(OUTPUT_IMG_DIR)
-        if not os.path.isdir(OUTPUT_LABEL_DIR):
-            os.mkdir(OUTPUT_LABEL_DIR)
-    elif not os.path.isdir(OUTPUT_LABEL_DIR):
-        os.mkdir(OUTPUT_LABEL_DIR)
+        os.mkdir(os.path.join(DATASET_ROOT_DIR, "train"))
+        os.mkdir(os.path.join(DATASET_ROOT_DIR, "val"))
+        os.mkdir(TRAIN_IMG_DIR)
+        os.mkdir(TRAIN_LABEL_DIR)
+        os.mkdir(VALIDATION_IMG_DIR)
+        os.mkdir(VALIDATION_LABEL_DIR)
     else:
         return -1
 
@@ -87,7 +104,11 @@ if __name__ == "__main__":
     sign_dict = load_signs()
 
     with open(os.path.join(DATASET_ROOT_DIR, "annotation.csv"), "x") as annot_file:
-        for filename in os.listdir(BACKGROUND_IMG_DIR):
+        current_save_mode = SAVE_MODE.TRAIN
+        val_split = len(os.listdir(BACKGROUND_IMG_DIR)) * 0.8
+        for i, filename in enumerate(os.listdir(BACKGROUND_IMG_DIR)):
+            if i > val_split:
+                current_save_mode = SAVE_MODE.VALIDATION
             annot_file.write(filename + "\n")
             signs = random.choices(
                 list(sign_dict.items()), k=random.randint(0, 5)
@@ -117,8 +138,11 @@ if __name__ == "__main__":
                     background, sign, (pos_x, pos_y)
                 )
                 annot_list.append(sign_annot)
-            write_annotation(filename, annot_list)
-            background.save(f"{OUTPUT_IMG_DIR}/{filename}")
+            write_annotation(filename, annot_list, current_save_mode)
+            if current_save_mode == SAVE_MODE.TRAIN:
+                background.save(f"{TRAIN_IMG_DIR}/{filename}")
+            elif current_save_mode == SAVE_MODE.VALIDATION:
+                background.save(f"{VALIDATION_IMG_DIR}/{filename}")
             # background.show()
-
-            # input("Press Enter to plot the next point...")
+    create_yaml(DATASET_ROOT_DIR)
+    # input("Press Enter to plot the next point...")
