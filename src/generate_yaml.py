@@ -1,6 +1,6 @@
 import os
 
-DATASET_PATH = "datasets/yolo_dataset"
+DATASET_PATH = "datasets/yolo_dataset_2"
 
 
 def create_yaml(dataset_path):
@@ -11,7 +11,7 @@ def create_yaml(dataset_path):
     with open(yaml_path, mode="w+") as f:
         f.write(f"path: ../{DATASET_PATH}\n")
         f.write("train: train\n")
-        f.write("val: train\n")
+        f.write("val: val\n")
         f.write("names:\n")
         signs = ["pozadí"] + [""] * len(os.listdir("data/signs"))
         for sign_path in os.listdir("data/signs"):
