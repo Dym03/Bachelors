@@ -19,6 +19,7 @@ if __name__ == "__main__":
     mapping_dict = create_mapping_dict("data/signs")
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
     model, opt, sch = load_model(model_path, device, box_score_thresh=0.90)
 
     model.to(device)
@@ -39,7 +40,7 @@ if __name__ == "__main__":
         images[0],
         boxes=predictions[0]["boxes"],
         labels=labels,
-        colors="green",
+        colors="black",
         width=4,
         font_size=40,
     )
