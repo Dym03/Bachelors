@@ -1,16 +1,17 @@
 import torch
 import os
 
-from PIL import Image
-from torch.utils.data import Dataset, DataLoader
+# from PIL import Image
+from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 from torchvision.models.detection import (
     fasterrcnn_resnet50_fpn_v2,
     FasterRCNN_ResNet50_FPN_V2_Weights,
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision.utils import draw_bounding_boxes
-from torchvision.transforms.functional import to_pil_image
+
+# from torchvision.utils import draw_bounding_boxes
+# from torchvision.transforms.functional import to_pil_image
 from torchvision.ops import box_iou
 from traffic_sign_dataset import TrafficSignDataset
 from torcheval.metrics import MulticlassAccuracy
@@ -19,8 +20,7 @@ NUM_CLASSES = 43
 NUM_EPOCHS = 4
 OUTPUT_MODEL_DICT = "models/"
 BASE_DATASET_DIR = "datasets"
-# DATASET_NAME = "10_000"
-DATASET_NAME = "test_dataset/new"
+DATASET_NAME = "10_000_n2"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -70,8 +70,6 @@ def evaluate(model, data_loader):
 
     # Finalize label accuracy
     label_accuracy = metric.compute().item()
-    if torch.isnan(label_accuracy):
-        label_accuracy = 0.0
 
     return mean_iou, label_accuracy
 
@@ -127,18 +125,20 @@ def match_boxes_and_calculate_iou(
     return matched_pred_labels, matched_true_labels, avg_iou
 
 
-def train(model, data_loader):
+def train(model, train_data_loader, val_data_loader):
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
     model.train()
-    epoch_losses = [0]
+    epoch_losses = []
+    iou_losses = []
+    label_accuracy_list = []
     for epoch in range(NUM_EPOCHS):
         epoch_loss = 0
         model.train()
 
-        for idx, (img, targets) in enumerate(data_loader):
+        for idx, (img, targets) in enumerate(train_data_loader):
             img = torch.stack(img).to(device)
             targets = [
                 {
@@ -157,14 +157,16 @@ def train(model, data_loader):
             epoch_loss += loss.item()
             if idx % 500 == 0:
                 print(
-                    f"Epoch : {epoch} img number {idx} out of {len(data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}"
+                    f"Epoch : {epoch} img number {idx} out of {len(train_data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}"
                 )
         # update the learning rate
-        mean_iou, label_accuracy = evaluate(model, data_loader)
+        mean_iou, label_accuracy = evaluate(model, val_data_loader)
+        iou_losses.append(mean_iou)
+        label_accuracy_list.append(label_accuracy)
         print(f"Mean IoU: {mean_iou}, Label Accuracy: {label_accuracy}")
 
         lr_scheduler.step()
-        epoch_loss_avg = epoch_loss / len(data_loader)
+        epoch_loss_avg = epoch_loss / len(train_data_loader)
         print(f"Avg Epoch loss {epoch_loss_avg}")
         if len(epoch_losses) == 0 or epoch_losses[-1] >= epoch_loss_avg:
             save_model(epoch_loss_avg, model, optimizer, lr_scheduler)
@@ -211,15 +213,19 @@ def custom_collate_fn(batch):
 if __name__ == "__main__":
     print(device)
     train_dataset = TrafficSignDataset(
-        os.path.join(BASE_DATASET_DIR, DATASET_NAME),
+        os.path.join(BASE_DATASET_DIR, DATASET_NAME, "train"),
         "annotation.csv",
-        "img",
+        "images",
         "labels",
         ToTensor(),
     )
-    # test_dataset = TrafficSignDataset(
-    #     "datasets/test_dataset/test", "annotation.csv", "img", "labels", ToTensor()
-    # )
+    val_dataset = TrafficSignDataset(
+        os.path.join(BASE_DATASET_DIR, DATASET_NAME, "val"),
+        "annotation.csv",
+        "images",
+        "labels",
+        ToTensor(),
+    )
     print(len(train_dataset))
     mapping_dict = create_mapping_dict("data/signs")
 
@@ -235,13 +241,25 @@ if __name__ == "__main__":
     training_loader = DataLoader(
         train_dataset,
         shuffle=True,
-        batch_size=1,
+        batch_size=16,
         collate_fn=lambda batch: tuple(
             zip(*batch)
         ),  # https://pytorch.org/vision/stable/auto_examples/transforms/plot_transforms_e2e.html#sphx-glr-auto-examples-transforms-plot-transforms-e2e-py
     )
 
-    train(model, training_loader)
+    val_loader = DataLoader(
+        val_dataset,
+        shuffle=False,
+        batch_size=16,
+        collate_fn=lambda batch: tuple(zip(*batch)),
+    )
+
+    train(model, training_loader, val_loader)
+
+    # (model, optimizer, lr_step) = load_model("models/0.04058232057011673.pt", device)
+    # model.to(device)
+    # mean_iou, label_accuracy = evaluate(model, training_loader)
+    # print(f"Mean IoU: {mean_iou}, Label Accuracy: {label_accuracy}")
 
     # model.eval()
     # testing_loader = DataLoader(test_dataset, collate_fn=custom_collate_fn)
