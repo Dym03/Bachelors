@@ -45,8 +45,9 @@ class TrafficSignDataset(Dataset):
         transform,
     ):
         self.root_dir = root_dir
-        self.annotations =  #pd.read_csv(os.path.join(root_dir, annotations_path))
+        #self.annotations = pd.read_csv(os.path.join(root_dir, annotations_path))
         self.img_dir = os.path.join(root_dir, img_dir)
+        self.annotations = os.listdir(self.img_dir)
         self.label_dir = os.path.join(root_dir, label_dir)
         self.transform = transform
 
@@ -54,7 +55,7 @@ class TrafficSignDataset(Dataset):
         return len(self.annotations)
 
     def __getitem__(self, index):
-        file_name = self.annotations.iloc[index].iloc[0]
+        file_name = self.annotations[index]
         img_file_path = os.path.join(self.img_dir, file_name)
         img = Image.open(img_file_path)
         img = self.transform(img)
@@ -62,7 +63,7 @@ class TrafficSignDataset(Dataset):
         #     img = self.transform(img)
         # tensor_img = torch.tensor(img)
 
-        label_file_path = os.path.join(self.label_dir, file_name + ".txt") # TODO The file name had a .jpg before now it is without it, so i have to remove it
+        label_file_path = os.path.join(self.label_dir, file_name[0: file_name.find(".")] + ".txt")
         with open(label_file_path, "r") as f:
             ids = []
             boxes = []

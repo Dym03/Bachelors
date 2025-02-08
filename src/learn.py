@@ -9,19 +9,22 @@ from torchvision.models.detection import (
     FasterRCNN_ResNet50_FPN_V2_Weights,
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+import matplotlib.pyplot as plt
 
 # from torchvision.utils import draw_bounding_boxes
 # from torchvision.transforms.functional import to_pil_image
 from torchvision.ops import box_iou
 from traffic_sign_dataset import TrafficSignDataset
 from torcheval.metrics import MulticlassAccuracy
+from tqdm import tqdm
+
 
 NUM_CLASSES = 43
-NUM_EPOCHS = 4
+NUM_EPOCHS = 50
 OUTPUT_MODEL_DICT = "models/"
 BASE_DATASET_DIR = "datasets"
 DATASET_NAME = "10_000_n2"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 def save_model(epoch_loss, model, optimizer, lr_scheduler):
@@ -35,6 +38,14 @@ def save_model(epoch_loss, model, optimizer, lr_scheduler):
         output_path,
     )
 
+def plot_graph(scores, xlabel, ylabel, title):
+    epochs = range(1, NUM_EPOCHS + 1)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.plot(epochs, scores)
+    plt.savefig(title)
+
 
 def evaluate(model, data_loader):
     total_iou = 0.0
@@ -42,7 +53,7 @@ def evaluate(model, data_loader):
     metric = MulticlassAccuracy(num_classes=NUM_CLASSES).to(device)
     model.eval()
     with torch.no_grad():
-        for idx, (img, targets) in enumerate(data_loader):
+        for idx, (img, targets) in enumerate(tqdm((data_loader), desc="Evaluating")):
             img = torch.stack(img).to(device)
             targets = [
                 {
@@ -138,7 +149,7 @@ def train(model, train_data_loader, val_data_loader):
         epoch_loss = 0
         model.train()
 
-        for idx, (img, targets) in enumerate(train_data_loader):
+        for idx, (img, targets) in enumerate(tqdm((train_data_loader), desc="Training epoch")):
             img = torch.stack(img).to(device)
             targets = [
                 {
@@ -172,6 +183,10 @@ def train(model, train_data_loader, val_data_loader):
             save_model(epoch_loss_avg, model, optimizer, lr_scheduler)
 
         epoch_losses.append(epoch_loss_avg)
+
+    plot_graph(iou_losses, "Epochs", "IoU loss", "IoU_Train")
+    plot_graph(label_accuracy_list, "Epochs", "Label Accuracy", "Label_Accuracy")
+    plot_graph(epoch_losses, "Epochs", "Avg Epoch loss", "Avg_Epoch_loss")
 
 
 def load_model(model_name, device, box_score_thresh=0.6):
@@ -213,17 +228,17 @@ def custom_collate_fn(batch):
 if __name__ == "__main__":
     print(device)
     train_dataset = TrafficSignDataset(
-        os.path.join(BASE_DATASET_DIR, DATASET_NAME, "train"),
+        os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "annotation.csv",
-        "images",
-        "labels",
+        "train/images",
+        "train/labels",
         ToTensor(),
     )
     val_dataset = TrafficSignDataset(
-        os.path.join(BASE_DATASET_DIR, DATASET_NAME, "val"),
+        os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "annotation.csv",
-        "images",
-        "labels",
+        "val/images",
+        "val/labels",
         ToTensor(),
     )
     print(len(train_dataset))
@@ -241,7 +256,7 @@ if __name__ == "__main__":
     training_loader = DataLoader(
         train_dataset,
         shuffle=True,
-        batch_size=16,
+        batch_size=4,
         collate_fn=lambda batch: tuple(
             zip(*batch)
         ),  # https://pytorch.org/vision/stable/auto_examples/transforms/plot_transforms_e2e.html#sphx-glr-auto-examples-transforms-plot-transforms-e2e-py
@@ -250,7 +265,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(
         val_dataset,
         shuffle=False,
-        batch_size=16,
+        batch_size=4,
         collate_fn=lambda batch: tuple(zip(*batch)),
     )
 
