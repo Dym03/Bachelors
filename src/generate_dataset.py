@@ -12,7 +12,7 @@ IMAGE_SIZE = 512
 
 SIGN_DIR = "data/signs"
 BACKGROUND_IMG_DIR = "background_photos"
-DATASET_ROOT_DIR = "datasets/10_000"
+DATASET_ROOT_DIR = "datasets/10_000_n2"
 TRAIN_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "train", "images")
 TRAIN_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "train", "labels")
 VALIDATION_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "val", "images")

@@ -9,7 +9,7 @@ def create_yaml(dataset_path):
         print("This yaml file already exists")
         return
     with open(yaml_path, mode="w+") as f:
-        f.write(f"path: ../{DATASET_PATH}\n")
+        f.write(f"path: ../{dataset_path}\n")
         f.write("train: train\n")
         f.write("val: val\n")
         f.write("names:\n")
