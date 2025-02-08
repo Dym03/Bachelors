@@ -1,10 +1,10 @@
 from PIL import Image
 import random
-import torch
 from torchvision.transforms import v2
 import os
 from enum import Enum
 from generate_yaml import create_yaml
+from tqdm import tqdm
 
 SIGN_MIN_SIZE = 60
 SIGN_MAX_SIZE = 120
@@ -105,8 +105,9 @@ if __name__ == "__main__":
 
     with open(os.path.join(DATASET_ROOT_DIR, "annotation.csv"), "x") as annot_file:
         current_save_mode = SAVE_MODE.TRAIN
-        val_split = len(os.listdir(BACKGROUND_IMG_DIR)) * 0.8
-        for i, filename in enumerate(os.listdir(BACKGROUND_IMG_DIR)):
+        dataset_size = len(os.listdir(BACKGROUND_IMG_DIR))
+        val_split = dataset_size * 0.8
+        for i, filename in enumerate(tqdm(os.listdir(BACKGROUND_IMG_DIR), desc="Generating Dataset")):
             if i > val_split:
                 current_save_mode = SAVE_MODE.VALIDATION
             annot_file.write(filename + "\n")
