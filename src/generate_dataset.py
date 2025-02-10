@@ -48,6 +48,23 @@ def load_signs() -> dict:
     return sign_dict
 
 
+def do_overlap(img_1, img_2):
+    x1, y1, width, height = img_1
+    x2, y2, width_2, height_2 = img_2
+
+    x1_br, y1_br = x1 + width, y1 + height
+    x2_br, y2_br = x2 + width_2, y2 + height_2
+
+    x_intersect_left = max(x1, x2)
+    y_intersect_top = max(y1, y2)
+    x_intersect_right = min(x1_br, x2_br)
+    y_intersect_bottom = min(y1_br, y2_br)
+
+    if x_intersect_left < x_intersect_right and y_intersect_top < y_intersect_bottom:
+        return True
+    return False
+
+
 def get_merged_background_sign(background: Image, sign: Image, position: tuple):
     # sign2 = Image.composite(sign, Image.new("RGB", sign.size, "white"), sign)
 
@@ -106,17 +123,22 @@ if __name__ == "__main__":
     with open(os.path.join(DATASET_ROOT_DIR, "annotation.csv"), "x") as annot_file:
         current_save_mode = SAVE_MODE.TRAIN
         dataset_size = len(os.listdir(BACKGROUND_IMG_DIR))
-        val_split = dataset_size * 0.8
-        for i, filename in enumerate(tqdm(os.listdir(BACKGROUND_IMG_DIR), desc="Generating Dataset")):
+        val_split = dataset_size * 0.8  # 80% train 20% validation
+        for i, filename in enumerate(
+            tqdm(os.listdir(BACKGROUND_IMG_DIR), desc="Generating Dataset")
+        ):
             if i > val_split:
                 current_save_mode = SAVE_MODE.VALIDATION
             annot_file.write(filename + "\n")
             signs = random.choices(
-                list(sign_dict.items()), k=random.randint(0, 5)
-            )  # Chooses random 5 signs to put into a picture
+                list(sign_dict.items()),
+                k=random.randint(0, 5),
+                weights=[0.05, 23.75, 23.75, 23.75, 23.75],
+            )  # Chooses upto 5 random signs to put into a picture
             annot_list = []
             background = Image.open(f"{BACKGROUND_IMG_DIR}/{filename}")
             background = background.resize((IMAGE_SIZE, IMAGE_SIZE))
+            inserted_signs = []
             for idx, sign_path in signs:
                 sign = Image.open(f"{SIGN_DIR}/{sign_path}").convert("RGBA")
                 new_width, new_height = (
@@ -124,10 +146,19 @@ if __name__ == "__main__":
                     random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
                 )
                 sign.thumbnail((new_width, new_height))
-                pos_x, pos_y = (
-                    random.randint(0, background.size[0] - sign.size[0]),
-                    random.randint(0, background.size[1] - sign.size[1]),
-                )
+                while 1:
+                    pos_x, pos_y = (
+                        random.randint(0, background.size[0] - sign.size[0]),
+                        random.randint(0, background.size[1] - sign.size[1]),
+                    )
+                    overlaps = False
+                    overlaps = [
+                        do_overlap(i_sign, (pos_x, pos_y, sign.size[0], sign.size[1]))
+                        for i_sign in inserted_signs
+                    ]  # Check for overlaping sings, we now dont want that, so we eliminate them by finding new coords
+                    if overlaps.count(True) == 0:
+                        break
+
                 sign_annot = Yolo_annotation(
                     idx,
                     (pos_x + (sign.size[0] / 2)) / background.size[0],
@@ -138,6 +169,7 @@ if __name__ == "__main__":
                 background = get_merged_background_sign(
                     background, sign, (pos_x, pos_y)
                 )
+                inserted_signs.append((pos_x, pos_y, sign.size[0], sign.size[1]))
                 annot_list.append(sign_annot)
             write_annotation(filename, annot_list, current_save_mode)
             if current_save_mode == SAVE_MODE.TRAIN:
@@ -146,4 +178,3 @@ if __name__ == "__main__":
                 background.save(f"{VALIDATION_IMG_DIR}/{filename}")
             # background.show()
     create_yaml(DATASET_ROOT_DIR)
-    # input("Press Enter to plot the next point...")

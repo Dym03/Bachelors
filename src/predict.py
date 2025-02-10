@@ -1,12 +1,9 @@
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
 from torchvision.models.detection import FasterRCNN_ResNet50_FPN_V2_Weights
 import os
 
-from learn import load_model, custom_collate_fn, create_mapping_dict
-from traffic_sign_dataset import TrafficSignDataset
+from learn import load_model, create_mapping_dict
 from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 
