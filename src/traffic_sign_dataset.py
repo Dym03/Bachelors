@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from PIL import Image
 from torch import tensor, float32, int64, zeros
 from torch.utils.data import Dataset
@@ -45,7 +44,6 @@ class TrafficSignDataset(Dataset):
         transform,
     ):
         self.root_dir = root_dir
-        #self.annotations = pd.read_csv(os.path.join(root_dir, annotations_path))
         self.img_dir = os.path.join(root_dir, img_dir)
         self.annotations = os.listdir(self.img_dir)
         self.label_dir = os.path.join(root_dir, label_dir)

@@ -9,6 +9,7 @@ from torchvision.models.detection import (
     FasterRCNN_ResNet50_FPN_V2_Weights,
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+import matplotlib.pyplot as plt
 
 # from torchvision.utils import draw_bounding_boxes
 # from torchvision.transforms.functional import to_pil_image

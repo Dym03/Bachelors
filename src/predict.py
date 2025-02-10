@@ -1,12 +1,9 @@
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
 from torchvision.models.detection import FasterRCNN_ResNet50_FPN_V2_Weights
 import os
 
-from learn import load_model, custom_collate_fn, create_mapping_dict
-from traffic_sign_dataset import TrafficSignDataset
+from learn import load_model, create_mapping_dict
 from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 
@@ -19,6 +16,7 @@ if __name__ == "__main__":
     mapping_dict = create_mapping_dict("data/signs")
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
     model, opt, sch = load_model(model_path, device, box_score_thresh=0.90)
 
     model.to(device)
@@ -39,7 +37,7 @@ if __name__ == "__main__":
         images[0],
         boxes=predictions[0]["boxes"],
         labels=labels,
-        colors="green",
+        colors="black",
         width=4,
         font_size=40,
     )

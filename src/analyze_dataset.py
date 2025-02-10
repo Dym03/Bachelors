@@ -28,7 +28,6 @@ def get_category_counts(dataset_path) -> dict[str, int]:
 def graph_category_counts(categories_counter: dict[str, int]):
     categories = sorted(categories_counter)
     values = [categories_counter[id] for id in categories]
-
     plt.xlabel("Kategorie")
     plt.ylabel("Počet výskytů")
     plt.title("Počet instancí na kategorií")
