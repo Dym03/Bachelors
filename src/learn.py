@@ -16,6 +16,8 @@ from torchvision.ops import box_iou
 from traffic_sign_dataset import TrafficSignDataset
 from torcheval.metrics import MulticlassAccuracy
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import datetime
 
 
 NUM_CLASSES = 43
@@ -27,7 +29,8 @@ device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 def save_model(epoch_loss, model, optimizer, lr_scheduler):
-    output_path = os.path.join(OUTPUT_MODEL_DICT, str(epoch_loss) + ".pt")
+    act_date = datetime.datetime.now().replace(microsecond=0).isoformat()
+    output_path = os.path.join(OUTPUT_MODEL_DICT, act_date + str(epoch_loss) + ".pt")
     torch.save(
         {
             "model": model.state_dict(),

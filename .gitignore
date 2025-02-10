@@ -4,3 +4,5 @@
 /models
 /background_photos
 /runs
+*.pt
+*.jpg
