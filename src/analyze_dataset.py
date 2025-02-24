@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 
-DATASET_NAME = "test_dataset/test"
+DATASET_NAME = "100_000"
 DATASET_DIR = "datasets"
 
 

@@ -48,6 +48,7 @@ def plot_graph(scores, xlabel, ylabel, title):
     plt.title(title)
     plt.plot(epochs, scores)
     plt.savefig(title)
+    # TODO Plot close to distinct the plots 
 
 
 def evaluate(model, data_loader):
@@ -181,7 +182,7 @@ def train(model, train_data_loader, val_data_loader):
 
         lr_scheduler.step()
         epoch_loss_avg = epoch_loss / len(train_data_loader)
-        print(f"Avg Epoch loss {epoch_loss_avg}")
+        print(f"Avg Epoch loss {epoch_loss_avg}") 
         if len(epoch_losses) == 0 or epoch_losses[-1] >= epoch_loss_avg:
             save_model(epoch_loss_avg, model, optimizer, lr_scheduler)
 

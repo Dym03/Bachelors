@@ -130,7 +130,8 @@ if __name__ == "__main__":
             ):
                 if i > val_split:
                     current_save_mode = SAVE_MODE.VALIDATION
-                annot_file.write(f"{filename}_{j}_{i}\n")
+                output_filename = f'{filename[0:filename.find(".")]}_{j}{filename[filename.find("."):]}';
+                annot_file.write(f"{output_filename}\n")
                 signs = random.choices(
                     list(sign_dict.items()),
                     k=random.choices([0, 1, 2, 3, 4, 5], weights=[0.05, 0.19, 0.19, 0.19, 0.19, 0.19])[0],
@@ -170,10 +171,10 @@ if __name__ == "__main__":
                     )
                     inserted_signs.append((pos_x, pos_y, sign.size[0], sign.size[1]))
                     annot_list.append(sign_annot)
-                write_annotation(filename, annot_list, current_save_mode)
+                write_annotation(output_filename, annot_list, current_save_mode)
                 if current_save_mode == SAVE_MODE.TRAIN:
-                    background.save(f"{TRAIN_IMG_DIR}/{filename}_{j}_{i}")
+                    background.save(f"{TRAIN_IMG_DIR}/{output_filename}")
                 elif current_save_mode == SAVE_MODE.VALIDATION:
-                    background.save(f"{VALIDATION_IMG_DIR}/{filename}_{j}_{i}")
+                    background.save(f"{VALIDATION_IMG_DIR}/{output_filename}")
                 # background.show()
     create_yaml(DATASET_ROOT_DIR)
