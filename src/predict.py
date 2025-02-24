@@ -10,36 +10,48 @@ from torchvision.transforms.functional import to_pil_image
 MODEL_BASE_DIR = "models/"
 MODEL_NAME = "2025-02-09T08:57:140.04473709136904238.pt"
 DATASET_BASE_DIR = "datasets"
-DATASET_NAME = ""
+DATASET_NAME = "FullIJCNN2013"
+
+
+def files(path):
+    for file in os.listdir(path):
+        if os.path.isfile(os.path.join(path, file)):
+            yield file
+
 
 if __name__ == "__main__":
     mapping_dict = create_mapping_dict("data/signs")
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
-    model, opt, sch = load_model(model_path, device, box_score_thresh=0.90)
+    model, opt, sch = load_model(model_path, device, box_score_thresh=0.70)
 
     model.to(device)
     model.eval()
-    image_path = "data/img/50.jpg"
+    # image_path = "data/img/50.jpg"
 
-    image = Image.open(image_path)
     transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
-    images = [transforms(image)]
-    images = [image.to(device) for image in images]
+    dataset_path = os.path.join(DATASET_BASE_DIR, DATASET_NAME)
+    for image_path in files(dataset_path):
+        image_path = os.path.join(dataset_path, image_path)
+        image = Image.open(image_path)
+        images = [transforms(image)]
+        images = [image.to(device) for image in images]
 
-    predictions = model(images)
-    print(predictions)
-    # print(type(predictions[0]["labels"]))
-    labels = [mapping_dict[int(id) + 1] for id in predictions[0]["labels"]]
-    print(labels)
-    box = draw_bounding_boxes(
-        images[0],
-        boxes=predictions[0]["boxes"],
-        labels=labels,
-        colors="black",
-        width=4,
-        font_size=40,
-    )
-    im = to_pil_image(box.detach())
-    im.show()
+        predictions = model(images)
+        print(predictions)
+        # print(type(predictions[0]["labels"]))
+        labels = [mapping_dict[int(id) + 1] for id in predictions[0]["labels"]]
+        print(labels)
+        box = draw_bounding_boxes(
+            images[0],
+            boxes=predictions[0]["boxes"],
+            labels=labels,
+            colors="black",
+            width=4,
+            font_size=40,
+        )
+        im = to_pil_image(box.detach())
+        im.show()
+        input("Press Enter to continue...")
+        im.close()

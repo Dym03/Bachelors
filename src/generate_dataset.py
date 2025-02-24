@@ -6,13 +6,13 @@ from enum import Enum
 from generate_yaml import create_yaml
 from tqdm import tqdm
 
-SIGN_MIN_SIZE = 60
+SIGN_MIN_SIZE = 30
 SIGN_MAX_SIZE = 120
 IMAGE_SIZE = 512
 
 SIGN_DIR = "data/signs"
 BACKGROUND_IMG_DIR = "background_photos"
-DATASET_ROOT_DIR = "datasets/10_000_n3"
+DATASET_ROOT_DIR = "datasets/100_000"
 TRAIN_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "train", "images")
 TRAIN_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "train", "labels")
 VALIDATION_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "val", "images")
@@ -121,59 +121,59 @@ if __name__ == "__main__":
     sign_dict = load_signs()
 
     with open(os.path.join(DATASET_ROOT_DIR, "annotation.csv"), "x") as annot_file:
-        current_save_mode = SAVE_MODE.TRAIN
         dataset_size = len(os.listdir(BACKGROUND_IMG_DIR))
-        val_split = dataset_size * 0.8  # 80% train 20% validation
-        for i, filename in enumerate(
-            tqdm(os.listdir(BACKGROUND_IMG_DIR), desc="Generating Dataset")
-        ):
-            if i > val_split:
-                current_save_mode = SAVE_MODE.VALIDATION
-            annot_file.write(filename + "\n")
-            signs = random.choices(
-                list(sign_dict.items()),
-                k=random.choices([0, 1, 2, 3, 4, 5], weights=[0.05, 0.19, 0.19, 0.19, 0.19, 0.19])[0]
-            )  # Chooses upto 5 random signs to put into a picture
-            annot_list = []
-            background = Image.open(f"{BACKGROUND_IMG_DIR}/{filename}")
-            background = background.resize((IMAGE_SIZE, IMAGE_SIZE))
-            inserted_signs = []
-            for idx, sign_path in signs:
-                sign = Image.open(f"{SIGN_DIR}/{sign_path}").convert("RGBA")
-                new_width, new_height = (
-                    random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
-                    random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE),
-                )
-                sign.thumbnail((new_width, new_height))
-                while 1:
-                    pos_x, pos_y = (
-                        random.randint(0, background.size[0] - sign.size[0]),
-                        random.randint(0, background.size[1] - sign.size[1]),
-                    )
-                    overlaps = False
-                    overlaps = [
-                        do_overlap(i_sign, (pos_x, pos_y, sign.size[0], sign.size[1]))
-                        for i_sign in inserted_signs
-                    ]  # Check for overlaping sings, we now dont want that, so we eliminate them by finding new coords
-                    if overlaps.count(True) == 0:
-                        break
+        val_split = dataset_size * 0.9  # 90% train 10% validation
+        for j in range(4):
+            current_save_mode = SAVE_MODE.TRAIN
+            for i, filename in enumerate(
+                tqdm(os.listdir(BACKGROUND_IMG_DIR), desc="Generating Dataset")
+            ):
+                if i > val_split:
+                    current_save_mode = SAVE_MODE.VALIDATION
+                annot_file.write(f"{filename}_{j}_{i}\n")
+                signs = random.choices(
+                    list(sign_dict.items()),
+                    k=random.choices([0, 1, 2, 3, 4, 5], weights=[0.05, 0.19, 0.19, 0.19, 0.19, 0.19])[0],
+                )  # Chooses upto 5 random signs to put into a picture
+                annot_list = []
+                background = Image.open(f"{BACKGROUND_IMG_DIR}/{filename}")
+                background = background.resize((IMAGE_SIZE, IMAGE_SIZE))
+                inserted_signs = []
+                for idx, sign_path in signs:
+                    sign = Image.open(f"{SIGN_DIR}/{sign_path}").convert("RGBA")
+                    new_sign_size = random.randint(SIGN_MIN_SIZE, SIGN_MAX_SIZE)
+                    sign.thumbnail((new_sign_size, new_sign_size))
+                    while 1:
+                        pos_x, pos_y = (
+                            random.randint(0, background.size[0] - sign.size[0]),
+                            random.randint(0, background.size[1] - sign.size[1]),
+                        )
+                        overlaps = False
+                        overlaps = [
+                            do_overlap(
+                                i_sign, (pos_x, pos_y, sign.size[0], sign.size[1])
+                            )
+                            for i_sign in inserted_signs
+                        ]  # Check for overlaping sings, we now dont want that, so we eliminate them by finding new coords
+                        if overlaps.count(True) == 0:
+                            break
 
-                sign_annot = Yolo_annotation(
-                    idx,
-                    (pos_x + (sign.size[0] / 2)) / background.size[0],
-                    (pos_y + (sign.size[1] / 2)) / background.size[1],
-                    sign.size[0] / background.size[0],
-                    sign.size[1] / background.size[1],
-                )  # The annotations have to be normalized
-                background = get_merged_background_sign(
-                    background, sign, (pos_x, pos_y)
-                )
-                inserted_signs.append((pos_x, pos_y, sign.size[0], sign.size[1]))
-                annot_list.append(sign_annot)
-            write_annotation(filename, annot_list, current_save_mode)
-            if current_save_mode == SAVE_MODE.TRAIN:
-                background.save(f"{TRAIN_IMG_DIR}/{filename}")
-            elif current_save_mode == SAVE_MODE.VALIDATION:
-                background.save(f"{VALIDATION_IMG_DIR}/{filename}")
-            # background.show()
+                    sign_annot = Yolo_annotation(
+                        idx,
+                        (pos_x + (sign.size[0] / 2)) / background.size[0],
+                        (pos_y + (sign.size[1] / 2)) / background.size[1],
+                        sign.size[0] / background.size[0],
+                        sign.size[1] / background.size[1],
+                    )  # The annotations have to be normalized
+                    background = get_merged_background_sign(
+                        background, sign, (pos_x, pos_y)
+                    )
+                    inserted_signs.append((pos_x, pos_y, sign.size[0], sign.size[1]))
+                    annot_list.append(sign_annot)
+                write_annotation(filename, annot_list, current_save_mode)
+                if current_save_mode == SAVE_MODE.TRAIN:
+                    background.save(f"{TRAIN_IMG_DIR}/{filename}_{j}_{i}")
+                elif current_save_mode == SAVE_MODE.VALIDATION:
+                    background.save(f"{VALIDATION_IMG_DIR}/{filename}_{j}_{i}")
+                # background.show()
     create_yaml(DATASET_ROOT_DIR)
