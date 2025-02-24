@@ -8,7 +8,7 @@ from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 
 MODEL_BASE_DIR = "models/"
-MODEL_NAME = "0.04058232057011673.pt"
+MODEL_NAME = "2025-02-09T08:57:140.04473709136904238.pt"
 DATASET_BASE_DIR = "datasets"
 DATASET_NAME = ""
 
