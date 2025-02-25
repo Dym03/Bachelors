@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 
-DATASET_NAME = "100_000"
+DATASET_NAME = "100_000/train"
 DATASET_DIR = "datasets"
 
 
@@ -26,13 +26,15 @@ def get_category_counts(dataset_path) -> dict[str, int]:
 
 
 def graph_category_counts(categories_counter: dict[str, int]):
-    categories = sorted(categories_counter)
+    categories = sorted(categories_counter, key=int)
     values = [categories_counter[id] for id in categories]
     plt.xlabel("Kategorie")
+    plt.xticks(rotation=45)
     plt.ylabel("Počet výskytů")
     plt.title("Počet instancí na kategorií")
     plt.bar(categories, values, color="blue")
     plt.show()
+    plt.savefig("100_000_categories")
 
 
 def analyze_dataset(dataset_path):
