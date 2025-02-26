@@ -12,7 +12,7 @@ IMAGE_SIZE = 512
 
 SIGN_DIR = "data/signs"
 BACKGROUND_IMG_DIR = "background_photos"
-DATASET_ROOT_DIR = "datasets/100_000"
+DATASET_ROOT_DIR = "datasets/100_000_n2"
 TRAIN_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "train", "images")
 TRAIN_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "train", "labels")
 VALIDATION_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "val", "images")
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                 annot_file.write(f"{output_filename}\n")
                 signs = random.choices(
                     list(sign_dict.items()),
-                    k=random.choices([0, 1, 2, 3, 4, 5], weights=[0.05, 0.19, 0.19, 0.19, 0.19, 0.19])[0],
+                    k=random.choices([0, 1, 2, 3, 4, 5], weights=[0.1, 0.18, 0.18, 0.18, 0.18, 0.18])[0],
                 )  # Chooses upto 5 random signs to put into a picture
                 annot_list = []
                 background = Image.open(f"{BACKGROUND_IMG_DIR}/{filename}")
