@@ -38,7 +38,6 @@ class TrafficSignDataset(Dataset):
     def __init__(
         self,
         root_dir: str,
-        annotations_path: str,
         img_dir: str,
         label_dir: str,
         transform,
