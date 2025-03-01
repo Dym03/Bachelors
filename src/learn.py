@@ -18,20 +18,21 @@ from traffic_sign_dataset import TrafficSignDataset
 from torcheval.metrics import MulticlassAccuracy
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import datetime
+from datetime import datetime, date
 
 
 NUM_CLASSES = 43
-NUM_EPOCHS = 50
-OUTPUT_MODEL_DICT = "models/"
+NUM_EPOCHS = 100
+ACT_DATE = date.today().isoformat()
 BASE_DATASET_DIR = "datasets"
-DATASET_NAME = "10_000_n2"
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+DATASET_NAME = "100_000_n2"
+OUTPUT_MODEL_DIR = f"torch_runs/run_{ACT_DATE}_{NUM_EPOCHS}_{DATASET_NAME}/models"
+OUTPUT_RUN_DIR = f"torch_runs/run_{ACT_DATE}_{NUM_EPOCHS}_{DATASET_NAME}/"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def save_model(epoch_loss, model, optimizer, lr_scheduler):
-    act_date = datetime.datetime.now().replace(microsecond=0).isoformat()
-    output_path = os.path.join(OUTPUT_MODEL_DICT, act_date + str(epoch_loss) + ".pt")
+    output_path = os.path.join(OUTPUT_MODEL_DIR, f"{str(epoch_loss)}.pt")
     torch.save(
         {
             "model": model.state_dict(),
@@ -43,12 +44,13 @@ def save_model(epoch_loss, model, optimizer, lr_scheduler):
 
 
 def plot_graph(scores, xlabel, ylabel, title):
+    plt.clf()
     epochs = range(1, NUM_EPOCHS + 1)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     plt.plot(epochs, scores)
-    plt.savefig(title)
+    plt.savefig(os.path.join(OUTPUT_RUN_DIR, title))
     # TODO Plot close to distinct the plots
 
 
@@ -85,7 +87,7 @@ def evaluate(model, data_loader):
     mean_iou = total_iou / total_samples if total_samples > 0 else 0.0
 
     # Finalize label accuracy
-    label_accuracy = metric.compute().item()
+    label_accuracy = metric.compute().item() if total_samples > 0 else 0.0
 
     return mean_iou, label_accuracy
 
@@ -136,7 +138,7 @@ def match_boxes_and_calculate_iou(
     )
 
     # Calculate average IoU
-    avg_iou = sum(iou_scores) / len(iou_scores) if iou_scores else 0.0
+    avg_iou = sum(iou_scores) / len(iou_scores) if len(iou_scores) > 0 else 0.0
 
     return matched_pred_labels, matched_true_labels, avg_iou
 
@@ -173,7 +175,7 @@ def train(model, train_data_loader, val_data_loader):
             optimizer.step()
 
             epoch_loss += loss.item()
-            if idx % 500 == 0:
+            if idx % 10000 == 0 and idx != 0:
                 print(
                     f"Epoch : {epoch} img number {idx} out of {len(train_data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}"
                 )
@@ -231,9 +233,13 @@ def custom_collate_fn(batch):
     # No need to stack target['boxes'] and 'labels' since you may want them as lists
     return images, targets[0]
 
+def init_dirs():
+    os.mkdir(OUTPUT_RUN_DIR)
+    os.mkdir(OUTPUT_MODEL_DIR)
 
 if __name__ == "__main__":
     print(device)
+    init_dirs()
     train_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "train/images",
@@ -250,7 +256,7 @@ if __name__ == "__main__":
     mapping_dict = create_mapping_dict("data/signs")
 
     weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-    model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.6).train()
+    model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.7).train()
     model.to(device)
 
     in_features = model.roi_heads.box_predictor.cls_score.in_features
