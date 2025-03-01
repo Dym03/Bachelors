@@ -45,7 +45,7 @@ def to_yolo(df):
 
 if __name__ == '__main__':
 
-    input_dir = pathlib.Path('datasets/Mapillary/annotations')
+    input_dir = pathlib.Path('datasets/Mapillary/mtsd_v2_partially_annotated/annotations')
     output_dir = pathlib.Path('datasets/Mapillary/annotations_yolo')
 
     df = pd.concat(map(from_json, input_dir.glob('*.json')), ignore_index=True)
