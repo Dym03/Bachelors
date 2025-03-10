@@ -20,6 +20,7 @@ DATASET_BASE_DIR = "datasets"
 DATASET_NAME = "yolo_dataset_2"
 
 
+
 def files(path):
     for file in os.listdir(path):
         if os.path.isfile(os.path.join(path, file)):
