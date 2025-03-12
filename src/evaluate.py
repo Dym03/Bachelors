@@ -14,10 +14,10 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 # Initialize metric
 metric = MeanAveragePrecision(iou_type="bbox")
 
-MODEL_BASE_DIR = "models/"
-MODEL_NAME = "0.04058232057011673.pt"
+MODEL_BASE_DIR = "torch_runs/run_2025-02-28_100_100_000_n2/models/"
+MODEL_NAME = "0.014048114550448642.pt"
 DATASET_BASE_DIR = "datasets"
-DATASET_NAME = "yolo_dataset_2"
+DATASET_NAME = "100_000_n2"
 
 
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     )
     mapping_dict = create_mapping_dict("data/signs")
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     print(device)
     model, opt, sch = load_model(model_path, device, box_score_thresh=0.70)
 
