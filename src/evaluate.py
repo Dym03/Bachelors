@@ -20,7 +20,6 @@ DATASET_BASE_DIR = "datasets"
 DATASET_NAME = "yolo_dataset_2"
 
 
-
 def files(path):
     for file in os.listdir(path):
         if os.path.isfile(os.path.join(path, file)):
@@ -28,11 +27,13 @@ def files(path):
 
 
 if __name__ == "__main__":
+    transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
     val_dataset = TrafficSignDataset(
         os.path.join(DATASET_BASE_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
         ToTensor(),
+        transform=transforms,
     )
     mapping_dict = create_mapping_dict("data/signs")
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
@@ -43,7 +44,6 @@ if __name__ == "__main__":
     model.to(device)
     model.eval()
 
-    transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
     val_loader = DataLoader(
         val_dataset,
         shuffle=False,
@@ -63,7 +63,9 @@ if __name__ == "__main__":
         for image in img:
             predictions = model(img)
             predictions = predictions
-            predictions[0]["labels"] = torch.tensor(list(map(lambda x: x + 1, predictions[0]["labels"])), dtype=torch.int64)
+            predictions[0]["labels"] = torch.tensor(
+                list(map(lambda x: x + 1, predictions[0]["labels"])), dtype=torch.int64
+            )
             print(predictions)
             print(targets)
             metric.update(predictions, targets)

@@ -233,31 +233,34 @@ def custom_collate_fn(batch):
     # No need to stack target['boxes'] and 'labels' since you may want them as lists
     return images, targets[0]
 
+
 def init_dirs():
     os.mkdir(OUTPUT_RUN_DIR)
     os.mkdir(OUTPUT_MODEL_DIR)
 
+
 if __name__ == "__main__":
     print(device)
     init_dirs()
+    weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+    model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.7).train()
+    model.to(device)
     train_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "train/images",
         "train/labels",
         ToTensor(),
+        transform=weights.transforms,
     )
     val_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
         ToTensor(),
+        transform=weights.transforms,
     )
     print(len(train_dataset))
     mapping_dict = create_mapping_dict("data/signs")
-
-    weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-    model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.7).train()
-    model.to(device)
 
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES).to(
