@@ -22,7 +22,7 @@ from datetime import datetime, date
 
 
 NUM_CLASSES = 43
-NUM_EPOCHS = 100
+NUM_EPOCHS = 5
 ACT_DATE = date.today().isoformat()
 BASE_DATASET_DIR = "datasets"
 DATASET_NAME = "100_000_n2"
@@ -249,15 +249,15 @@ if __name__ == "__main__":
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "train/images",
         "train/labels",
-        ToTensor(),
-        transform=weights.transforms,
+#        ToTensor(),
+        transform=weights.transforms(),
     )
     val_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
-        ToTensor(),
-        transform=weights.transforms,
+#        ToTensor(),
+        transform=weights.transforms(),
     )
     print(len(train_dataset))
     mapping_dict = create_mapping_dict("data/signs")

@@ -17,7 +17,7 @@ metric = MeanAveragePrecision(iou_type="bbox")
 MODEL_BASE_DIR = "torch_runs/run_2025-02-28_100_100_000_n2/models/"
 MODEL_NAME = "0.014048114550448642.pt"
 DATASET_BASE_DIR = "datasets"
-DATASET_NAME = "100_000_n2"
+DATASET_NAME = "yolo_dataset_2"
 
 
 def files(path):
@@ -25,6 +25,11 @@ def files(path):
         if os.path.isfile(os.path.join(path, file)):
             yield file
 
+def print_metrics(metric, mapping_dict):
+    print(f"Overall mAP50-95 : {metric['map']:<.4f} mAP_small : {metric['map_small']:<.4f} mAP_med : {metric['map_medium']:<.4f} mAP_large : {metric['map_large']:<.4f}")
+    print(f'{"Class":<30}  :{"mAP50-95":<10}{"mAR":<10}')
+    for i, c_id in enumerate(metric['classes']):
+        print(f'{mapping_dict[c_id.item()]:<30} : {metric["map_per_class"][i]:<10.4f}{metric["mar_100_per_class"][i]:<10.4f}')
 
 if __name__ == "__main__":
     transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
@@ -32,12 +37,12 @@ if __name__ == "__main__":
         os.path.join(DATASET_BASE_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
-        ToTensor(),
+#        ToTensor(),
         transform=transforms,
     )
     mapping_dict = create_mapping_dict("data/signs")
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
-    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
     model, opt, sch = load_model(model_path, device, box_score_thresh=0.70)
 
@@ -50,29 +55,37 @@ if __name__ == "__main__":
         batch_size=1,
         collate_fn=lambda batch: tuple(zip(*batch)),
     )
-    metric = MeanAveragePrecision(iou_type="bbox")
-    for img, targets in val_loader:
-        img = torch.stack(img).to(device)
-        targets = [
-            {
-                "boxes": target["boxes"].to(device),
-                "labels": target["labels"].to(device),
-            }
-            for target in targets
-        ]
-        for image in img:
+    metric = MeanAveragePrecision(iou_type="bbox", class_metrics=True)
+    metric.to(device)
+    with torch.no_grad():
+        for i, (img, targets) in enumerate(val_loader):
+#        img = torch.stack(img).to(device)
+            img = [image.to(device) for image in img]
+            targets = [
+                {
+                    "boxes": target["boxes"].to(device),
+                    "labels": target["labels"].to(device),
+                }
+                for target in targets
+            ]
             predictions = model(img)
-            predictions = predictions
-            predictions[0]["labels"] = torch.tensor(
-                list(map(lambda x: x + 1, predictions[0]["labels"])), dtype=torch.int64
-            )
-            print(predictions)
-            print(targets)
+#            predictions[0]["labels"] = torch.tensor(
+ #                list(map(lambda x: x, predictions[0]["labels"])), dtype=torch.int64
+  #          ).to(device)
+            predictions[0]["labels"].to(dtype=torch.int64, device=device)
             metric.update(predictions, targets)
-
-    mAP_results = metric.compute()
-    print(mAP_results)
+            if i % 100 == 0:
+                print(f'Img {i} out of {len(val_loader)}')
     # dataset_path = os.path.join(DATASET_BASE_DIR, DATASET_NAME)
+    result = metric.compute()
+
+    # Compute mean IoU if there are valid values
+
+    for k in result.keys():
+        print(f'{k}: {result[k]}')
+    print_metrics(result, mapping_dict)
+
+   # print({k: v.cpu() for k, v in mAP_results.items()})
     # for image_path in files(dataset_path):
     #     image_path = os.path.join(dataset_path, image_path)
     #     image = Image.open(image_path)
