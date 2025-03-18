@@ -56,8 +56,8 @@ class TrafficSignDataset(Dataset):
         img_file_path = os.path.join(self.img_dir, file_name)
         img = Image.open(img_file_path)
         img = self.transform(img)
-        if self.transform:
-            img = self.transform(img)
+        # if self.transform:
+        #     img = self.transform(img)
         # tensor_img = torch.tensor(img)
 
         label_file_path = os.path.join(self.label_dir, file_name[0: file_name.find(".")] + ".txt")

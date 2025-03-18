@@ -32,7 +32,7 @@ if __name__ == "__main__":
         os.path.join(DATASET_BASE_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
-        ToTensor(),
+        # ToTensor(),
         transform=transforms,
     )
     mapping_dict = create_mapping_dict("data/signs")
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     )
     metric = MeanAveragePrecision(iou_type="bbox")
     for img, targets in val_loader:
-        img = torch.stack(img).to(device)
+        img = [image.to(device) for image in img]
         targets = [
             {
                 "boxes": target["boxes"].to(device),
