@@ -37,7 +37,6 @@ if __name__ == "__main__":
         os.path.join(DATASET_BASE_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
-#        ToTensor(),
         transform=transforms,
     )
     mapping_dict = create_mapping_dict("data/signs")
