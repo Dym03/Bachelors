@@ -3,6 +3,115 @@ from PIL import Image
 from torch import tensor, float32, int64, zeros
 from torch.utils.data import Dataset
 
+Mapillary_to_My_Dataset = {
+    0 : 0, # pozadí
+    271 : 1, # krizovatka
+    272 : 1,
+    374 : 2, # semafor
+    375 : 2,
+    376 : 2,
+    377 : 2,
+    162 : 3, # jedno_smer
+    110 : 4, # konec_80
+    352 : 5, # prace
+    353 : 5, 
+    354 : 5, 
+    355 : 5, 
+    356 : 5, 
+    357 : 5,
+    274 : 6, # leva
+    275 : 6,
+    247 : 6,
+    248 : 6,
+    249 : 6,
+    250 : 6,
+    276 : 7, # prava
+    277 : 7,
+    251 : 7,
+    252 : 7,
+    253 : 7,
+    254 : 7,
+    255 : 7,
+    262 : 8, # prednost
+    238 : 9, # stop
+    239 : 9,
+    240 : 9,
+    230 : 10, # zakaz_vjezdu
+    231 : 10,
+    232 : 10,
+    233 : 10,
+    136 : 11, # 30
+    137 : 11,
+    139 : 12, # 40
+    140 : 12,
+    141 : 12,
+    145 : 13, # 50
+    146 : 13,
+    148 : 14, # 60
+    151 : 15, # 80
+    155 : 15,
+    152 : 16, # 90
+    128 : 17, # 100
+    129 : 17,
+    153 : 17,
+    130 : 18, # 110
+    131 : 19, # 120
+    227 : 21, # hlavni
+    107 : 22, # konec_hlavni
+    234 : 24, # kruhovy_objezd
+    235 : 24
+    283 : 25, # leva_prava
+    284 : 25,
+    386 : 26, # nerovnost
+    387 : 26,
+    388 : 26,
+    348 : 28, # zuzeni_prava
+    349 : 28,
+    285 : 29, # prava_leva
+    286 : 29,
+    321 : 30, # prechod
+    322 : 30,
+    323 : 30,
+    324 : 30,
+    325 : 30,
+    326 : 30,
+    327 : 30, 
+    110 : 31, # prednost_proti_jedouci
+    111 : 32, # prikazany_smer_rovne
+    112 : 32,
+    381 : 33, # prikazany_smer_vlevo
+    19  : 33,
+    382 : 34, # prikazany_smer_vpravo
+    20  : 34,
+    21  : 34,
+    383 : 34,
+    342 : 35, # retarder
+    343 : 35,
+    176 : 36, # zakaz_aut
+    177 : 36,
+    174 : 37, # zakaz_aut_motorky
+    175 : 37,
+    180 : 38, # zakaz_predjizdeni
+    181 : 38,
+    182 : 38,
+    183 : 38,
+    71  : 39, # zakaz_stani
+    185 : 39,
+    186 : 39,
+    187 : 39,
+    188 : 40, # zakaz_zastaveni
+    189 : 40,
+    190 : 40,
+    198 : 40,
+    199 : 40,
+    200 : 40,
+    201 : 40,
+    202 : 40,
+    344 : 41, # zuzeni
+    345 : 41,
+    346 : 42, # zuzeni_leva
+    347 : 42,
+}
 
 def yolo_to_coco(box, img_width, img_height):
     """
