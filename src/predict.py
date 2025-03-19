@@ -28,30 +28,30 @@ if __name__ == "__main__":
 
     model.to(device)
     model.eval()
-    # image_path = "data/img/50.jpg"
 
     transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
     dataset_path = os.path.join(DATASET_BASE_DIR, DATASET_NAME)
-    for image_path in files(dataset_path):
-        image_path = os.path.join(dataset_path, image_path)
-        image = Image.open(image_path)
-        images = [transforms(image)]
-        images = [image.to(device) for image in images]
+    with torch.no_grad():
+        for image_path in files(dataset_path):
+            image_path = os.path.join(dataset_path, image_path)
+            image = Image.open(image_path)
+            images = [transforms(image)]
+            images = [image.to(device) for image in images]
 
-        predictions = model(images)
-        print(predictions)
-        # print(type(predictions[0]["labels"]))
-        labels = [mapping_dict[int(id) + 1] for id in predictions[0]["labels"]]
-        print(labels)
-        box = draw_bounding_boxes(
-            images[0],
-            boxes=predictions[0]["boxes"],
-            labels=labels,
-            colors="black",
-            width=4,
-            font_size=40,
-        )
-        im = to_pil_image(box.detach())
-        im.show()
-        input("Press Enter to continue...")
-        im.close()
+            predictions = model(images)
+            print(predictions)
+            # print(type(predictions[0]["labels"]))
+            labels = [mapping_dict[int(id) + 1] for id in predictions[0]["labels"]]
+            print(labels)
+            box = draw_bounding_boxes(
+                images[0],
+                boxes=predictions[0]["boxes"],
+                labels=labels,
+                colors="black",
+                width=4,
+                font_size=40,
+            )
+            im = to_pil_image(box.detach())
+            im.show()
+            input("Press Enter to continue...")
+            im.close()
