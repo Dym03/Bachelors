@@ -1,7 +1,8 @@
 import os
 from PIL import Image
-from torch import tensor, float32, int64, zeros
+from torch import tensor, float32, int64, zeros, empty
 from torch.utils.data import Dataset
+import torchvision.ops as ops
 
 Mapillary_to_My_Dataset = {
     0: 0,  # pozadí
@@ -113,6 +114,48 @@ Mapillary_to_My_Dataset = {
     347: 42,
 }
 
+COCO_to_My = {
+    11 : 9,
+    9  : 2,
+}
+
+def apply_nms(predictions, device, iou_threshold=0.45, conf_threshold=0.001):
+    """
+    Applies Non-Maximum Suppression (NMS) on YOLO predictions.
+
+    Args:
+        predictions: List of dictionaries containing 'boxes', 'scores', and 'labels'.
+        iou_threshold: IoU threshold for NMS.
+        conf_threshold: Confidence score threshold.
+
+    Returns:
+        Filtered predictions after applying NMS.
+    """
+    filtered_predictions = []
+    for pred in predictions:
+        boxes = pred["boxes"]
+        scores = pred["scores"]
+        labels = pred["labels"]
+
+        # Filter out low-confidence predictions
+        keep = scores > conf_threshold
+        boxes, scores, labels = boxes[keep], scores[keep], labels[keep]
+
+        if len(boxes) == 0:
+            filtered_predictions.append({"boxes": empty((0, 4), device=device), "scores": empty((0,), device=device), "labels": empty((0,), device=device).long()})
+            continue
+
+        # Apply NMS
+        keep_indices = ops.nms(boxes, scores, iou_threshold)
+        
+        # Keep only selected boxes
+        filtered_predictions.append({
+            "boxes": boxes[keep_indices],
+            "scores": scores[keep_indices],
+            "labels": labels[keep_indices]
+        })
+
+    return filtered_predictions
 
 def convert_yolo_to_torch_outputs(results, device):
     yolo_boxes = results[0].boxes.data
@@ -184,7 +227,6 @@ class TrafficSignDataset(Dataset):
         if self.transform:
             img = self.transform(img)
             img_width, img_height = img.shape[1], img.shape[2]
-        print(f"w = {img_width} h = {img_height}")
         # tensor_img = torch.tensor(img)
 
         label_file_path = os.path.join(
