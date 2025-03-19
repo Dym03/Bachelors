@@ -179,9 +179,12 @@ class TrafficSignDataset(Dataset):
         file_name = self.annotations[index]
         img_file_path = os.path.join(self.img_dir, file_name)
         img = Image.open(img_file_path)
+        img_width, img_height = img.width, img.height
         # img = self.transform(img)
         if self.transform:
             img = self.transform(img)
+            img_width, img_height = img.shape[1], img.shape[2]
+        print(f"w = {img_width} h = {img_height}")
         # tensor_img = torch.tensor(img)
 
         label_file_path = os.path.join(
@@ -197,7 +200,7 @@ class TrafficSignDataset(Dataset):
                     for i in line.split(" ")
                 ]
                 ids.append(tokens[0])
-                yolo_box = yolo_to_coco(tokens[1:], img.shape[1], img.shape[2])
+                yolo_box = yolo_to_coco(tokens[1:], img_width, img_height)
                 boxes.append(yolo_box)
         if len(boxes) == 0:
             boxes_tensor = zeros((0, 4), dtype=float32)  # Empty tensor of shape [0, 4]
