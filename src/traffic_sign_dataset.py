@@ -118,9 +118,47 @@ Mapillary_to_My = {
 }
 
 COCO_to_My = {
-    11 : 9,
-    9  : 2,
+    11: 9,
+    9: 2,
 }
+
+My_to_Mapillary = {
+    1: 272,
+    3: 162,
+    4: 109,
+    5: 355,
+    6: 277,  # Check this one
+    7: 277,
+    8: 238,
+    9: 241,
+    10: 230,  # Check this out this one
+    11: 136,
+    12: 139,
+    14: 148,
+    15: 151,
+    16: 152,
+    17: 153,
+    18: 130,
+    19: 131,
+    21: 227,  # hlavni
+    22: 107,  # konec_hlavni
+    25: 284,
+    26: 388,
+    28: 349,
+    29: 286,
+    30: 324,
+    31: 110,
+    34: 383,
+    35: 343,
+    36: 176,
+    37: 175,
+    38: 183,
+    39: 186,
+    40: 188,
+    41: 345,
+    42: 347,
+}
+
 
 def apply_nms(predictions, device, iou_threshold=0.45, conf_threshold=0.001):
     """
@@ -145,20 +183,29 @@ def apply_nms(predictions, device, iou_threshold=0.45, conf_threshold=0.001):
         boxes, scores, labels = boxes[keep], scores[keep], labels[keep]
 
         if len(boxes) == 0:
-            filtered_predictions.append({"boxes": empty((0, 4), device=device), "scores": empty((0,), device=device), "labels": empty((0,), device=device).long()})
+            filtered_predictions.append(
+                {
+                    "boxes": empty((0, 4), device=device),
+                    "scores": empty((0,), device=device),
+                    "labels": empty((0,), device=device).long(),
+                }
+            )
             continue
 
         # Apply NMS
         keep_indices = ops.nms(boxes, scores, iou_threshold)
-        
+
         # Keep only selected boxes
-        filtered_predictions.append({
-            "boxes": boxes[keep_indices],
-            "scores": scores[keep_indices],
-            "labels": labels[keep_indices]
-        })
+        filtered_predictions.append(
+            {
+                "boxes": boxes[keep_indices],
+                "scores": scores[keep_indices],
+                "labels": labels[keep_indices],
+            }
+        )
 
     return filtered_predictions
+
 
 def convert_yolo_to_torch_outputs(results, device):
     yolo_boxes = results[0].boxes.data
