@@ -12,6 +12,8 @@ from torchvision.transforms.functional import to_pil_image
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from enum import Enum
 from ultralytics import YOLO
+from ultralytics.utils.metrics import DetMetrics
+from ultralytics.models.yolo.detect.val import DetectionValidator
 import numpy as np
 from Mapillary_utils import Mapillary_mapping_dict 
 
@@ -51,7 +53,7 @@ def print_metrics(metric, mapping_dict):
             )
 
 
-def evaluate_faster_RCNN(model, data_loader, metric, device):
+def evaluate_faster_RCNN(model, data_loader, metric, device, yolo_metrics, yolo_val):
     with torch.no_grad():
         for i, (img, targets) in enumerate(data_loader):
             #        img = torch.stack(img).to(device)
@@ -66,9 +68,12 @@ def evaluate_faster_RCNN(model, data_loader, metric, device):
             predictions = model(img)
             predictions[0]["labels"].to(dtype=torch.int64, device=device)
             metric.update(predictions, targets)
+            tp = yolo_val._process_batch(predictions[0]['boxes'], targets[0]['boxes'], targets[0]['labels']).int()
+            yolo_metrics.process(tp, predictions[0]['scores'], predictions[0]['labels'], targets[0]['labels'])
             if i % 100 == 0:
                 print(f"Img {i} out of {len(data_loader)}")
     result = metric.compute()
+    print(f'YOLO Metrics: {yolo_metrics.results_dict}')
     return result
 
 def translate_predictions(predictions, device):
@@ -93,7 +98,7 @@ def translate_predictions(predictions, device):
     predictions[0]["labels"] = torch.tensor(translated_labels, dtype=torch.int64, device=device)
     return predictions
 
-def evaluate_YOLO(model, data_loader, metric, device):
+def evaluate_YOLO(model, data_loader, metric, device, yolo_metrics, yolo_val):
     for i, (img, targets) in enumerate(data_loader):
         targets = [
             {
@@ -108,9 +113,12 @@ def evaluate_YOLO(model, data_loader, metric, device):
             predictions = translate_predictions(predictions, device)
         #predictions = apply_nms(predictions, device)
         metric.update(predictions, targets)
+        tp = yolo_val._process_batch(predictions[0]['boxes'], targets[0]['boxes'], targets[0]['labels']).int()
+        yolo_metrics.process(tp, predictions[0]['scores'], predictions[0]['labels'], targets[0]['labels'])
         if i % 100 == 0:
             print(f"Img {i} out of {len(data_loader)}")
     result = metric.compute()
+    print(f'YOLO Metrics: {yolo_metrics.results_dict}')
     return result
 
 
@@ -147,10 +155,14 @@ def get_model(model_path, device):
 if __name__ == "__main__":
     val_dataset = get_val_dataset()
     mapping_dict = None
+
+    yolo_metrics = DetMetrics()
+    yolo_val = DetectionValidator()
     if DATASET_NAME == 'Mapillary':
         mapping_dict = Mapillary_mapping_dict
     else:
         mapping_dict = create_mapping_dict("data/signs")
+    yolo_metrics.names = mapping_dict  # should be the dictionary of classes
     model_path = os.path.join(MODEL_BASE_DIR, MODEL_NAME)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
@@ -165,9 +177,9 @@ if __name__ == "__main__":
     metric.to(device)
     result = None
     if EVAL_TYPE == Eval_Type.FASTER_RCNN:
-        result = evaluate_faster_RCNN(model, val_loader, metric, device)
+        result = evaluate_faster_RCNN(model, val_loader, metric, device, yolo_metrics, yolo_val)
     elif EVAL_TYPE in [Eval_Type.YOLO_MY, Eval_Type.YOLO_BASE, Eval_Type.YOLO_MAPILLARY]:
-        result = evaluate_YOLO(model, val_loader, metric, device)
+        result = evaluate_YOLO(model, val_loader, metric, device, yolo_metrics, yolo_val)
     
     for k in result.keys():
         print(f"{k}: {result[k]}")
