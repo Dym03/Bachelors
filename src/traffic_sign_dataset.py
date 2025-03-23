@@ -4,7 +4,7 @@ from torch import tensor, float32, int64, zeros, empty
 from torch.utils.data import Dataset
 import torchvision.ops as ops
 
-Mapillary_to_My_Dataset = {
+Mapillary_to_My = {
     0: 0,  # pozadí
     271: 1,  # krizovatka
     272: 1,
@@ -37,6 +37,9 @@ Mapillary_to_My_Dataset = {
     238: 9,  # stop
     239: 9,
     240: 9,
+    241: 9,
+    242: 9,
+    243: 9,
     230: 10,  # zakaz_vjezdu
     231: 10,
     232: 10,
