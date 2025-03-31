@@ -19,16 +19,19 @@ from torcheval.metrics import MulticlassAccuracy
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from datetime import datetime, date
-
+import wandb
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 NUM_CLASSES = 43
-NUM_EPOCHS = 5
+NUM_EPOCHS = 20
 ACT_DATE = date.today().isoformat()
 BASE_DATASET_DIR = "datasets"
 DATASET_NAME = "100_000_n2"
 OUTPUT_MODEL_DIR = f"torch_runs/run_{ACT_DATE}_{NUM_EPOCHS}_{DATASET_NAME}/models"
 OUTPUT_RUN_DIR = f"torch_runs/run_{ACT_DATE}_{NUM_EPOCHS}_{DATASET_NAME}/"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+wandb.init(dir=OUTPUT_RUN_DIR)
 
 
 def save_model(epoch_loss, model, optimizer, lr_scheduler):
@@ -58,10 +61,13 @@ def evaluate(model, data_loader):
     total_iou = 0.0
     total_samples = 0
     metric = MulticlassAccuracy(num_classes=NUM_CLASSES).to(device)
+    mAP = MeanAveragePrecision(iou_type="bbox", class_metrics=True, average="micro")
+    mAP.to(device)
     model.eval()
     with torch.no_grad():
         for idx, (img, targets) in enumerate(tqdm((data_loader), desc="Evaluating")):
-            img = torch.stack(img).to(device)
+            # img = torch.stack(img).to(device)
+            img = [image.to(device) for image in img]
             targets = [
                 {
                     "boxes": target["boxes"].to(device),
@@ -69,27 +75,31 @@ def evaluate(model, data_loader):
                 }
                 for target in targets
             ]
-            for image in img:
-                predictions = model(img)
-                matched_pred_labels, matched_true_labels, avg_iou = (
-                    match_boxes_and_calculate_iou(
-                        predictions[0]["boxes"],
-                        predictions[0]["labels"],
-                        targets[0]["boxes"],
-                        targets[0]["labels"],
-                    )
+
+            predictions = model(img)
+            predictions[0]["labels"].to(dtype=torch.int64, device=device)
+            mAP.update(predictions, targets)
+
+            matched_pred_labels, matched_true_labels, avg_iou = (
+                match_boxes_and_calculate_iou(
+                    predictions[0]["boxes"],
+                    predictions[0]["labels"],
+                    targets[0]["boxes"],
+                    targets[0]["labels"],
                 )
-                total_iou += avg_iou
-                total_samples += 1
-                if len(matched_pred_labels) > 0:
-                    metric.update(matched_pred_labels, matched_true_labels)
+            )
+            total_iou += avg_iou
+            total_samples += 1
+            if len(matched_pred_labels) > 0:
+                metric.update(matched_pred_labels, matched_true_labels)
 
     mean_iou = total_iou / total_samples if total_samples > 0 else 0.0
 
     # Finalize label accuracy
     label_accuracy = metric.compute().item() if total_samples > 0 else 0.0
+    mAP_result = mAP.compute()
 
-    return mean_iou, label_accuracy
+    return mean_iou, label_accuracy, mAP_result["map"], mAP_result["map_50"]
 
 
 def match_boxes_and_calculate_iou(
@@ -179,11 +189,20 @@ def train(model, train_data_loader, val_data_loader):
                 print(
                     f"Epoch : {epoch} img number {idx} out of {len(train_data_loader)} avg epoch_loss this epoch : {epoch_loss / (idx + 1)}"
                 )
+                wandb.log({"train_loss": loss})
         # update the learning rate
-        mean_iou, label_accuracy = evaluate(model, val_data_loader)
+        mean_iou, label_accuracy, mAP50_95, mAP_50 = evaluate(model, val_data_loader)
         iou_losses.append(mean_iou)
         label_accuracy_list.append(label_accuracy)
         print(f"Mean IoU: {mean_iou}, Label Accuracy: {label_accuracy}")
+        wandb.log(
+            {
+                "Mean_IoU": mean_iou,
+                "label_accuracy": label_accuracy,
+                "mAP50-95": mAP50_95,
+                "mAP50": mAP_50,
+            }
+        )
 
         lr_scheduler.step()
         epoch_loss_avg = epoch_loss / len(train_data_loader)
@@ -245,18 +264,19 @@ if __name__ == "__main__":
     weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
     model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.7).train()
     model.to(device)
+    wandb.watch(model, log_freq=100)
     train_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "train/images",
         "train/labels",
-#        ToTensor(),
+        #        ToTensor(),
         transform=weights.transforms(),
     )
     val_dataset = TrafficSignDataset(
         os.path.join(BASE_DATASET_DIR, DATASET_NAME),
         "val/images",
         "val/labels",
-#        ToTensor(),
+        #        ToTensor(),
         transform=weights.transforms(),
     )
     print(len(train_dataset))

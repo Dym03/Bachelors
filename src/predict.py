@@ -30,7 +30,7 @@ if __name__ == "__main__":
     model, opt, sch = load_model(model_path, device, box_score_thresh=0.70)
 
     model.to(device)
-    model.eval()
+    model.eval()    
 
     transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
     dataset_path = os.path.join(DATASET_BASE_DIR, DATASET_NAME)
