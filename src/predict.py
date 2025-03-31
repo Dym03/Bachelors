@@ -7,10 +7,13 @@ from learn import load_model, create_mapping_dict
 from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 
-MODEL_BASE_DIR = "models/"
-MODEL_NAME = "0.04058232057011673.pt"
+import time
+
+
+MODEL_BASE_DIR = "torch_runs/run_2025-02-28_100_100_000_n2/models"
+MODEL_NAME = "0.014048114550448642.pt"
 DATASET_BASE_DIR = "datasets"
-DATASET_NAME = "FullIJCNN2013"
+DATASET_NAME = "GTSDB/val/images"
 
 
 def files(path):
@@ -37,8 +40,12 @@ if __name__ == "__main__":
             image = Image.open(image_path)
             images = [transforms(image)]
             images = [image.to(device) for image in images]
-
+            
+            start = time.time()
             predictions = model(images)
+            end = time.time()
+            length = end - start
+            print("It took", length, "seconds!")
             print(predictions)
             # print(type(predictions[0]["labels"]))
             labels = [mapping_dict[int(id) + 1] for id in predictions[0]["labels"]]
@@ -51,7 +58,7 @@ if __name__ == "__main__":
                 width=4,
                 font_size=40,
             )
-            im = to_pil_image(box.detach())
-            im.show()
+#            im = to_pil_image(box.detach())
+#            im.show()
             input("Press Enter to continue...")
-            im.close()
+ #           im.close()
