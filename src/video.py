@@ -1,13 +1,12 @@
 import cv2
 from ultralytics import YOLO
 
+MODEL_PATH = "runs/detect/yolo11l.pt_100_000_n2_50_2025-03-23/weights/best.pt"
+VIDEO_PATH = "/run/media/honzadymacek/Elements SE/Honza-Skola/Bachelors/Python/data/video/transfer_239148_files_f8011902/cam0_20241125_105954.avi"
 
-# model = YOLO(model="runs/detect/yolo11l.pt_Mapillary_100_2025-03-12/weights/best.pt")
-# model = YOLO(model="runs/detect/yolo11l.pt_100_000_n2_50_2025-03-23/weights/best.pt")
-model = YOLO(model="runs/detect/train6/weights/best.pt")
+model = YOLO(model=MODEL_PATH)
 
 cap = cv2.VideoCapture("/run/media/honzadymacek/Elements SE/Honza-Skola/Bachelors/Python/data/video/transfer_239148_files_f8011902/cam0_20241125_105954.avi")
-# cap = cv2.VideoCapture("/home/honzadymacek/Documents/Python/traffic_lights/data/video/2018_1106_062930_015F.MP4")
 
 fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
 fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -37,7 +36,7 @@ while cap.isOpened():
             class_id, conf = result.cls.item(), result.conf.item()
 
             # Convert YOLO box format (center_x, center_y, width, height) to (top-left, bottom-right)
-            img_w, img_h = flipped_frame.shape[1], flipped_frame.shape[0]  # Get frame dimensions
+            img_w, img_h = flipped_frame.shape[1], flipped_frame.shape[0]
             x1 = int(x1)
             x2 = int(x2)
             y1 = int(y1)

@@ -58,7 +58,7 @@ if __name__ == "__main__":
                 width=4,
                 font_size=40,
             )
-#            im = to_pil_image(box.detach())
-#            im.show()
+            im = to_pil_image(box.detach())
+            im.show()
             input("Press Enter to continue...")
- #           im.close()
+            im.close()

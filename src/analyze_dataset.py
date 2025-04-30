@@ -9,9 +9,19 @@ ONLY_CATSD = True
 ids_of_interest = [271,272,374,375,376,377,162,109,352,353,354,355,356,357,274,275,247,248,249,250,276,277,251,252,253
 ,254,255,262,238,239,240,230,231,232,233,136,137,139,140,141,145,146,148,151,155,152,128,129,153,130,131,227,107,234,235
 ,283,284,386,387,388,348,349,285,286,321,322,323,324,325,326,327,110,111,112,381,19,382,20,21,383,342,343,176,177
-,174,175,180,181,182,183,71,185,186,187,188,189,190,198,199,200,201,202,344,345,346,347]
+,174,175,180,181,182,183,71,185,186,187,188,189,190,198,199,200,201,202,344,345,346,347] # Selected ids from the Mapillary dataset
 
 def get_category_counts(dataset_path) -> dict[str, int]:
+    """
+    Creates a category counter
+    
+    Args:
+        dataset_path (str): Specify part of a dataset with a path, needs to labels dir level below.
+
+    Returns:
+        categories_counter (dict): key is str id of the category value is the num of appearances. 
+
+    """
     categories_counter = {}
     if not os.path.isdir(dataset_path):
         print(f"No dataset with this name exitsts at this path {dataset_path}\n")
@@ -40,9 +50,9 @@ def get_category_counts(dataset_path) -> dict[str, int]:
         if background:
             background_count += 1
     if DATASET_NAME[:DATASET_NAME.index('/')] == 'Mapillary':
-        categories_counter.pop('89')
-        categories_counter.pop('85')
-        categories_counter.pop('399')
+        categories_counter.pop('89') # Ignored ids
+        categories_counter.pop('85') # 
+        categories_counter.pop('399') #
     print(max(categories_counter.values()))
     print(f'Number of background images: {background_count}\n')
     print(f'Number of instances in total: {total_instances}')
@@ -51,6 +61,13 @@ def get_category_counts(dataset_path) -> dict[str, int]:
 
 
 def graph_category_counts(categories_counter: dict[str, int]):
+    """
+    Plots bar plot with input categories counter x axis are categories ids, y axis the number of appearances.
+    
+    Args:
+        categories_counter (dict): key is str id of the category value is the num of appearances. 
+
+    """
     categories = sorted(categories_counter, key=int)
     if ONLY_CATSD:
         values = [categories_counter[str(id)] if (str(id) in categories_counter.keys()) else 0 for id in ids_of_interest]
@@ -63,17 +80,16 @@ def graph_category_counts(categories_counter: dict[str, int]):
     plt.xticks(rotation=45, fontsize=15)
     plt.yticks(fontsize=15)
     plt.ylabel("Počet výskytů", fontsize=15)
-    #plt.title("Rozložení kategorii v validačním datasetu Mapillary")
     data = {'cat': categories, 'val' : values}
     sns.barplot(x='cat', y='val',data=data, palette="muted")
     ax = sns.barplot(x='cat', y='val', data=data, palette="muted")
 
     # Select only 4 evenly spaced tick positions
-    tick_positions = np.linspace(0, len(categories) - 1, 4, dtype=int)  # Get 4 indices
-    tick_labels = [categories[i] for i in tick_positions]  # Get corresponding category names
+    tick_positions = np.linspace(0, len(categories) - 1, 4, dtype=int)
+    tick_labels = [categories[i] for i in tick_positions]
 
-    ax.set_xticks(tick_positions)  # Set tick positions
-    ax.set_xticklabels(tick_labels, rotation=45)  # Set tick labels with rotation
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45)
     plt.tight_layout()
     plt.savefig(f"{DATASET_NAME[:DATASET_NAME.index('/')]}_{'interest_' if ONLY_CATSD else ''}categories_{DATASET_NAME[DATASET_NAME.index('/')+1:]}", format='pdf')
     plt.show()

@@ -35,6 +35,15 @@ wandb.init(dir=OUTPUT_RUN_DIR)
 
 
 def save_model(epoch_loss, model, optimizer, lr_scheduler):
+    """
+    Saves model
+
+    Args:
+        epoch_loss (float): Curr epoch loss.
+        model: Model to be saved.
+        optimized: Optimizer to be saved.
+        lr_scheduler: Learning rate scheduler to be saved.
+    """
     output_path = os.path.join(OUTPUT_MODEL_DIR, f"{str(epoch_loss)}.pt")
     torch.save(
         {
@@ -47,6 +56,15 @@ def save_model(epoch_loss, model, optimizer, lr_scheduler):
 
 
 def plot_graph(scores, xlabel, ylabel, title):
+    """
+    Plots a metric
+
+    Args:
+        scores (list): List of metrics to be plotted
+        xlabel (str): X axis label.
+        ylabel (str): Y axis label.
+        title (str): Title for the plot.
+    """
     plt.clf()
     epochs = range(1, NUM_EPOCHS + 1)
     plt.xlabel(xlabel)
@@ -54,10 +72,22 @@ def plot_graph(scores, xlabel, ylabel, title):
     plt.title(title)
     plt.plot(epochs, scores)
     plt.savefig(os.path.join(OUTPUT_RUN_DIR, title))
-    # TODO Plot close to distinct the plots
 
 
 def evaluate(model, data_loader):
+    """
+    Evaluates the model
+
+    Args:
+        model: To be evaluated model.
+        data_loader (DataLoader): Validation loader.
+
+    Returns:
+        mean_iou (float): List of matched predicted labels.
+        label_accuracy (float): List of matched true labels.
+        mAP50-95 (float): mAP50-95 metric.
+        mAP50 (float): mAP50 metric.
+    """
     total_iou = 0.0
     total_samples = 0
     metric = MulticlassAccuracy(num_classes=NUM_CLASSES).to(device)
@@ -154,6 +184,15 @@ def match_boxes_and_calculate_iou(
 
 
 def train(model, train_data_loader, val_data_loader):
+    """
+    Train the model for NUM_EPOCHS defined
+
+    Args:
+        model: To be trained model.
+        train_data_loader (DataLoader): Train loader.
+        val_data_loader (DataLoader): Validation loader.
+
+    """
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
 
@@ -218,6 +257,14 @@ def train(model, train_data_loader, val_data_loader):
 
 
 def load_model(model_name, device, box_score_thresh=0.6):
+    """
+    Train the model for NUM_EPOCHS defined
+
+    Args:
+        model: To be loaded model.
+        device (str): Device where the model should be placed.
+        box_score_thresh (float): Model param for detections.
+    """
     model = fasterrcnn_resnet50_fpn_v2(box_score_thresh=box_score_thresh)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, NUM_CLASSES).to(
@@ -236,6 +283,15 @@ def load_model(model_name, device, box_score_thresh=0.6):
 
 
 def create_mapping_dict(sign_dir):
+    """
+    Creates a mapping dictionary for translating ids to sign name.
+
+    Args:
+        sign_dir (str): Directory where signs are saved with format id_name.
+
+    Returns:
+        sign_dict (dict): Returns dict key being id value being name of the sign.
+    """
     sign_dict = {0: "background"}
     for filename in os.listdir(sign_dir):
         idx = int(filename[: filename.find("_")]) + 1
@@ -243,17 +299,10 @@ def create_mapping_dict(sign_dir):
 
     return sign_dict
 
-
-def custom_collate_fn(batch):
-    images, targets = zip(*batch)
-    # Optionally stack images into a batch
-    images = torch.stack(images)
-    targets = list(targets)
-    # No need to stack target['boxes'] and 'labels' since you may want them as lists
-    return images, targets[0]
-
-
 def init_dirs():
+    """
+    Prepare dirs
+    """
     os.mkdir(OUTPUT_RUN_DIR)
     os.mkdir(OUTPUT_MODEL_DIR)
 
@@ -304,76 +353,3 @@ if __name__ == "__main__":
     )
 
     train(model, training_loader, val_loader)
-
-    # (model, optimizer, lr_step) = load_model("models/0.04058232057011673.pt", device)
-    # model.to(device)
-    # mean_iou, label_accuracy = evaluate(model, training_loader)
-    # print(f"Mean IoU: {mean_iou}, Label Accuracy: {label_accuracy}")
-
-    # model.eval()
-    # testing_loader = DataLoader(test_dataset, collate_fn=custom_collate_fn)
-    # data_iter = iter(testing_loader)
-    # image, label = next(data_iter)
-    # # print(label)
-    # device = torch.device("cpu")
-    # model = model.to(device)
-    # image = image.to(device)
-
-    # preprocess = weights.transforms()
-    # batch = [preprocess(image)]
-
-    # im = to_pil_image(image[0])
-    # im.show()
-    # predictions = model(image)
-    # print(predictions)
-    # print(type(predictions[0]["labels"]))
-    # labels = [mapping_dict[int(id)] for id in predictions[0]["labels"]]
-    # print(predictions)
-    # print(labels)
-    # boxes = torch.tensor(
-    #     [
-    #         [134.4126, 152.6398, 186.7712, 200.0036],
-    #         [302.9673, 175.2862, 380.8156, 236.9193],
-    #         [297.1067, 311.1100, 333.6919, 344.6310],
-    #     ]
-    # )
-    # labels = [7, 7, 21]
-    # labels = [mapping_dict[id + 1] for id in labels]
-    # box = draw_bounding_boxes(
-    #     image[0],
-    #     boxes=boxes,
-    #     labels=labels,
-    #     colors="red",
-    #     width=4,
-    #     font_size=30,
-    # )
-    # im = to_pil_image(box.detach())
-    # im.show()
-
-    # dataiter = iter(training_loader)
-    # images, labels = next(dataiter)
-
-    # print(len(images))
-
-    # # print(images)
-    # images = images[0]
-
-    # weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-    # model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.9)
-    # model.eval()
-
-    # preprocess = weights.transforms()
-
-    # batch = [preprocess(images)]
-    # prediction = model(batch)[0]
-    # labels = [weights.meta["categories"][i] for i in prediction["labels"]]
-    # box = draw_bounding_boxes(
-    #     images,
-    #     boxes=prediction["boxes"],
-    #     labels=labels,
-    #     colors="red",
-    #     width=4,
-    #     font_size=30,
-    # )
-    # im = to_pil_image(box.detach())
-    # im.show()

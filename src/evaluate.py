@@ -3,7 +3,7 @@ from PIL import Image
 from torchvision.models.detection import FasterRCNN_ResNet50_FPN_V2_Weights
 import os
 
-from traffic_sign_dataset import TrafficSignDataset, convert_yolo_to_torch_outputs, apply_nms, COCO_to_My, Mapillary_to_My, My_to_Mapillary, CATSD_to_GTSDB
+from traffic_sign_dataset import TrafficSignDataset, convert_yolo_to_torch_outputs, COCO_to_My, Mapillary_to_My, My_to_Mapillary, CATSD_to_GTSDB
 from torch.utils.data import DataLoader
 from train import load_model, create_mapping_dict
 from torchvision.transforms import ToTensor, Resize, Compose
@@ -16,7 +16,7 @@ import numpy as np
 from Mapillary_utils import Mapillary_mapping_dict, GTSDB_mapping_dict 
 
 
-# Initialize metric
+# Specifies the eval type that should be used, which is connected to steps are are needed
 class Eval_Type(Enum):
     FASTER_RCNN = 1
     YOLO_MY = 2
@@ -42,6 +42,15 @@ def files(path):
 
 
 def print_metrics(macro_metric, micro_metric, mapping_dict):
+    """
+    Prints metrics in YOLO like style
+
+    Args:
+        macro_metrics: Macro Mean Average Precision metric.
+        micro_metrics: Micro Mean Average Precision metric.
+        mapping_dict (dict): Dictionary to map ids to sign names
+
+    """
     filtered_mAP = list(filter(lambda x: x > 0, macro_metric['map_per_class']))
     my_mAP = 0
     if (len(filtered_mAP) > 0):
@@ -64,6 +73,20 @@ def print_metrics(macro_metric, micro_metric, mapping_dict):
 
 
 def evaluate_faster_RCNN(model, data_loader, macro_metric, micro_metric, device):
+    """
+    Evaluates Faster RCNN model
+    
+    Args:
+        model: Model that will be evaluated.
+        data_loader (DataLoader): Dataloader with validation data.
+        macro_metrics: Macro Mean Average Precision metric.
+        micro_metrics: Micro Mean Average Precision metric.
+        device: Device to move data to.
+    
+    Returns:
+        macro_metrics: Updated Macro Mean Average Precision metric.
+        micro_metrics: Updated Micro Mean Average Precision metric.
+    """
     with torch.no_grad():
         for i, (img, targets) in enumerate(data_loader):
             #        img = torch.stack(img).to(device)
@@ -89,6 +112,15 @@ def evaluate_faster_RCNN(model, data_loader, macro_metric, micro_metric, device)
     return macro_result, micro_result
 
 def translate_predictions(predictions, device):
+    """
+    Translate predictions from one dataset to another using the translation dictionary. Used when cross evaluating models.\n
+    Also collects data of signs that are not in the translation dict, so the ones that need to be looked at if they were not overlooked.
+
+    Args:
+        predictions: Outputs of the models.
+        device: Device to move the predicitions to.
+
+    """
     translation_dict = None
     if EVAL_TYPE == Eval_Type.YOLO_BASE:
         translation_dict = COCO_to_My
@@ -98,7 +130,7 @@ def translate_predictions(predictions, device):
         translation_dict = My_to_Mapillary
     elif EVAL_TYPE in [Eval_Type.YOLO_MY, Eval_Type.FASTER_RCNN] and DATASET_NAME == 'GTSDB':
         translation_dict = CATSD_to_GTSDB
-    labels = predictions[0]["labels"].tolist()  # Convert tensor to list
+    labels = predictions[0]["labels"].tolist()
     translated_labels = [
         translation_dict[x] if x in translation_dict else -1 for x in labels
     ]
@@ -114,6 +146,21 @@ def translate_predictions(predictions, device):
     return predictions
 
 def evaluate_YOLO(model, data_loader, macro_metric, micro_metric, device):
+    """
+    Evaluates YOLO model
+    
+    Args:
+        model: Model that will be evaluated.
+        data_loader (DataLoader): Dataloader with validation data.
+        macro_metrics: Macro Mean Average Precision metric.
+        micro_metrics: Micro Mean Average Precision metric.
+        device: Device to move data to.
+
+    Returns:
+        macro_metrics: Updated Macro Mean Average Precision metric.
+        micro_metrics: Updated Micro Mean Average Precision metric.
+
+    """
     for i, (img, targets) in enumerate(data_loader):
         targets = [
             {
@@ -128,7 +175,7 @@ def evaluate_YOLO(model, data_loader, macro_metric, micro_metric, device):
             predictions = translate_predictions(predictions, device)
         if (DATASET_NAME == 'GTSDB'):
             predictions = translate_predictions(predictions, device)
-        #predictions = apply_nms(predictions, device)
+        
         macro_metric.update(predictions, targets)
         micro_metric.update(predictions, targets)
         if i % 100 == 0:
@@ -139,13 +186,16 @@ def evaluate_YOLO(model, data_loader, macro_metric, micro_metric, device):
 
 
 def get_val_dataset():
+    """
+    Gets correct validation dataset for the model.
+
+    Returns:
+        val_dataset (TrafficSignDataset): Retuned dataset with correct transforms. 
+
+    """
     val_dataset = None
     if EVAL_TYPE == Eval_Type.FASTER_RCNN:
         transforms = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT.transforms()
-        #transforms = Compose([
-        #    Resize((512, 512)),
-        #    transforms,
-        #    ])
         val_dataset = TrafficSignDataset(
             os.path.join(DATASET_BASE_DIR, DATASET_NAME),
             "val/images",
@@ -163,6 +213,14 @@ def get_val_dataset():
 
 
 def get_model(model_path, device):
+    """
+    Loads correct model based on the EvalType.
+
+    Args:
+        model_path (str): Path to the model.
+        device (str): Device that the model will be loaded to.
+
+    """
     if EVAL_TYPE == Eval_Type.FASTER_RCNN:
         model, opt, sch = load_model(model_path, device, box_score_thresh=0.60)
         model.to(device)

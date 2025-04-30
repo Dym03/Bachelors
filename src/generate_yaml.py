@@ -4,6 +4,9 @@ DATASET_PATH = "datasets/yolo_dataset_2"
 
 
 def create_yaml(dataset_path):
+    """
+    Create a yaml conf file for yolo training.
+    """
     yaml_path = os.path.join(dataset_path, "dataset.yaml")
     if os.path.exists(yaml_path):
         print("This yaml file already exists")

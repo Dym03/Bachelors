@@ -189,55 +189,15 @@ CATSD_to_GTSDB = {
         }
 
 
-
-def apply_nms(predictions, device, iou_threshold=0.45, conf_threshold=0.001):
+def convert_yolo_to_torch_outputs(results, device):
     """
-    Applies Non-Maximum Suppression (NMS) on YOLO predictions.
+    Converts yolo outputs to torch format for evaluation
 
     Args:
-        predictions: List of dictionaries containing 'boxes', 'scores', and 'labels'.
-        iou_threshold: IoU threshold for NMS.
-        conf_threshold: Confidence score threshold.
+        results (dict): Dictionary with yolo results after detection
+        device (str): device where the results should be placed 
 
-    Returns:
-        Filtered predictions after applying NMS.
     """
-    filtered_predictions = []
-    for pred in predictions:
-        boxes = pred["boxes"]
-        scores = pred["scores"]
-        labels = pred["labels"]
-
-        # Filter out low-confidence predictions
-        keep = scores > conf_threshold
-        boxes, scores, labels = boxes[keep], scores[keep], labels[keep]
-
-        if len(boxes) == 0:
-            filtered_predictions.append(
-                {
-                    "boxes": empty((0, 4), device=device),
-                    "scores": empty((0,), device=device),
-                    "labels": empty((0,), device=device).long(),
-                }
-            )
-            continue
-
-        # Apply NMS
-        keep_indices = ops.nms(boxes, scores, iou_threshold)
-
-        # Keep only selected boxes
-        filtered_predictions.append(
-            {
-                "boxes": boxes[keep_indices],
-                "scores": scores[keep_indices],
-                "labels": labels[keep_indices],
-            }
-        )
-
-    return filtered_predictions
-
-
-def convert_yolo_to_torch_outputs(results, device):
     yolo_boxes = results[0].boxes.data
     torch_outpus = []
     torch_dict = {"boxes": [], "labels": [], "scores": []}
@@ -303,11 +263,11 @@ class TrafficSignDataset(Dataset):
         img_file_path = os.path.join(self.img_dir, file_name)
         img = Image.open(img_file_path)
         img_width, img_height = img.width, img.height
-        # img = self.transform(img)
+        
         if self.transform:
             img = self.transform(img)
             img_width, img_height = img.shape[1], img.shape[2]
-        # tensor_img = torch.tensor(img)
+        
 
         label_file_path = os.path.join(
             self.label_dir, file_name[0 : file_name.find(".")] + ".txt"

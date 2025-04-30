@@ -18,7 +18,7 @@ TRAIN_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "train", "labels")
 VALIDATION_IMG_DIR = os.path.join(DATASET_ROOT_DIR, "val", "images")
 VALIDATION_LABEL_DIR = os.path.join(DATASET_ROOT_DIR, "val", "labels")
 
-
+# If we are creating training or validation part of the dataset
 class SAVE_MODE(Enum):
     TRAIN = 1
     VALIDATION = 2
@@ -48,7 +48,15 @@ def load_signs() -> dict:
     return sign_dict
 
 
-def do_overlap(img_1, img_2):
+def do_overlap(img_1, img_2) -> bool:
+    """
+    Checks for overlapping signs, right now it is not wanted if they overlap.
+
+    Args:
+        img_1 (MatLike): Traffic sign.
+        img_2 (MatLike): Traffic sign.
+
+    """
     x1, y1, width, height = img_1
     x2, y2, width_2, height_2 = img_2
 
@@ -66,9 +74,11 @@ def do_overlap(img_1, img_2):
 
 
 def get_merged_background_sign(background: Image, sign: Image, position: tuple):
-    # sign2 = Image.composite(sign, Image.new("RGB", sign.size, "white"), sign)
+    """
+    Inserts sign into the background, while merging the alpha chanell, also applies transformation to the sign.
+    """
 
-    # augmentor = v2.AutoAugment() # Old method, not maybe that useful
+    
     sign_converted = sign.convert("RGBA")
     # sign3 = augmentor(sign_converted)
     transforms = v2.RandomApply(
@@ -86,7 +96,15 @@ def get_merged_background_sign(background: Image, sign: Image, position: tuple):
 
 def write_annotation(
     image_name: str, yolo_annots: list[Yolo_annotation], mode: SAVE_MODE
-):
+):  
+    """
+    Write all annotations for one image into a file.
+    
+    Args: 
+        image_name (str): Image name because annot have the same name 
+        yolo_annots (list): List of annotations for this image.
+        mode (SAVE_MODE): If this image is in a training of validation set.
+    """
     annot_file_path = ""
     if mode == SAVE_MODE.TRAIN:
         annot_file_path = TRAIN_LABEL_DIR
