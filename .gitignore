@@ -1,5 +1,6 @@
 /env
-/data
+/data/img
+/data/video
 /datasets
 /models/old_models
 /background_photos
