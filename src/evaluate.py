@@ -5,9 +5,9 @@ import os
 
 from traffic_sign_dataset import TrafficSignDataset, convert_yolo_to_torch_outputs, apply_nms, COCO_to_My, Mapillary_to_My, My_to_Mapillary, CATSD_to_GTSDB
 from torch.utils.data import DataLoader
-from learn import load_model, create_mapping_dict
-from torchvision.utils import draw_bounding_boxes
+from train import load_model, create_mapping_dict
 from torchvision.transforms import ToTensor, Resize, Compose
+from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from enum import Enum
@@ -25,13 +25,13 @@ class Eval_Type(Enum):
 
 
 
-MODEL_BASE_DIR = "torch_runs/run_2025-02-28_100_100_000_n2/models"
-MODEL_NAME = "0.014048114550448642.pt"
-#MODEL_BASE_DIR = "runs/detect/yolo11s.pt_Mapillary_100_2025-03-103/weights"
-#MODEL_NAME = "best.pt"
+#MODEL_BASE_DIR = "torch_runs/run_2025-02-28_100_100_000_n2/models"
+#MODEL_NAME = "0.014048114550448642.pt"
+MODEL_BASE_DIR = "runs/detect/yolo11l.pt_100_000_n2_50_2025-03-23/weights"
+MODEL_NAME = "best.pt"
 DATASET_BASE_DIR = "datasets"
 DATASET_NAME = "Mapillary"
-EVAL_TYPE = Eval_Type.FASTER_RCNN
+EVAL_TYPE = Eval_Type.YOLO_MY
 num_of_appearences = {}
 predicted_signs = {}
 

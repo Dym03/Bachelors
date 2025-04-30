@@ -131,7 +131,7 @@ My_to_Mapillary = {
     7: 277,
     8: 238,
     9: 241,
-    10: 230,  # Check this out this one
+    10: 232,  # Check this out this one
     11: 136,
     12: 139,
     14: 148,

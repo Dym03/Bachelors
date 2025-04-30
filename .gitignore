@@ -7,6 +7,7 @@
 *.pt
 *.jpg
 *.png
+*.pdf
 /FullIJCNN2013
 /JSON2YOLO/
 /src/__pycache__

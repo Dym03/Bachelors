@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-DATASET_NAME = "Mapillary/val"
+DATASET_NAME = "Mapillary/train"
 DATASET_DIR = "datasets"
 ONLY_CATSD = True
 ids_of_interest = [271,272,374,375,376,377,162,109,352,353,354,355,356,357,274,275,247,248,249,250,276,277,251,252,253
@@ -55,13 +55,15 @@ def graph_category_counts(categories_counter: dict[str, int]):
     if ONLY_CATSD:
         values = [categories_counter[str(id)] if (str(id) in categories_counter.keys()) else 0 for id in ids_of_interest]
         categories = sorted(ids_of_interest)
+        categories = range(len(ids_of_interest))
     else:
         values = [categories_counter[id] for id in categories]
     
-    plt.xlabel("Kategorie")
-    plt.xticks(rotation=45)
-    plt.ylabel("Počet výskytů")
-    plt.title("Rozložení kategorii v validačním datasetu Mapillary")
+    plt.xlabel("Kategorie", fontsize=15)
+    plt.xticks(rotation=45, fontsize=15)
+    plt.yticks(fontsize=15)
+    plt.ylabel("Počet výskytů", fontsize=15)
+    #plt.title("Rozložení kategorii v validačním datasetu Mapillary")
     data = {'cat': categories, 'val' : values}
     sns.barplot(x='cat', y='val',data=data, palette="muted")
     ax = sns.barplot(x='cat', y='val', data=data, palette="muted")
@@ -71,9 +73,9 @@ def graph_category_counts(categories_counter: dict[str, int]):
     tick_labels = [categories[i] for i in tick_positions]  # Get corresponding category names
 
     ax.set_xticks(tick_positions)  # Set tick positions
-    ax. set_xticklabels(tick_labels, rotation=45)  # Set tick labels with rotation
+    ax.set_xticklabels(tick_labels, rotation=45)  # Set tick labels with rotation
     plt.tight_layout()
-    plt.savefig(f"{DATASET_NAME[:DATASET_NAME.index('/')]}_categories_{DATASET_NAME[DATASET_NAME.index('/')+1:]}", format='pdf')
+    plt.savefig(f"{DATASET_NAME[:DATASET_NAME.index('/')]}_{'interest_' if ONLY_CATSD else ''}categories_{DATASET_NAME[DATASET_NAME.index('/')+1:]}", format='pdf')
     plt.show()
 
 
