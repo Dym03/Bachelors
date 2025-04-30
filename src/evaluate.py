@@ -13,7 +13,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from enum import Enum
 from ultralytics import YOLO
 import numpy as np
-from Mapillary_utils import Mapillary_mapping_dict, GTSDB_mapping_dict 
+from mapping_dicts import Mapillary_mapping_dict, GTSDB_mapping_dict 
 
 
 # Specifies the eval type that should be used, which is connected to steps are are needed

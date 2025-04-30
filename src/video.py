@@ -1,12 +1,20 @@
 import cv2
+import sys
+import os
 from ultralytics import YOLO
 
-MODEL_PATH = "runs/detect/yolo11l.pt_100_000_n2_50_2025-03-23/weights/best.pt"
-VIDEO_PATH = "/run/media/honzadymacek/Elements SE/Honza-Skola/Bachelors/Python/data/video/transfer_239148_files_f8011902/cam0_20241125_105954.avi"
-
+MODEL_PATH = "models/yolo_models/yolo11l.pt_CATSD_50_2025-03-23.pt"
+VIDEO_PATH = sys.argv[1] if len(sys.argv) > 1 else "" # Either specify as argument or specify here
+if VIDEO_PATH == "":
+    print("Please specify Video Path as a first argument")
+    exit(-1)
+elif not os.path.exists(VIDEO_PATH):
+    print("Please specify a valid video path as a first argument")
+    exit(-1)
+    
 model = YOLO(model=MODEL_PATH)
 
-cap = cv2.VideoCapture("/run/media/honzadymacek/Elements SE/Honza-Skola/Bachelors/Python/data/video/transfer_239148_files_f8011902/cam0_20241125_105954.avi")
+cap = cv2.VideoCapture(VIDEO_PATH)
 
 fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
 fps = int(cap.get(cv2.CAP_PROP_FPS))
