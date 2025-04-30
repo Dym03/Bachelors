@@ -1,10 +1,10 @@
 /env
 /data
 /datasets
-/models
+/models/old_models
 /background_photos
 /runs
-*.pt
+/torch_runs
 *.jpg
 *.png
 *.pdf
