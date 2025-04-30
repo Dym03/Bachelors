@@ -75,7 +75,6 @@ def get_merged_background_sign(background: Image, sign: Image, position: tuple):
         transforms=[
             v2.RandomAffine(degrees=(5, 10), fill=(0, 0, 0, 0)),
             v2.RandomPerspective(distortion_scale=0.3, p=1, fill=(0, 0, 0, 0)),
-            v2.RandomRotation(degrees=(5, 10)),
         ]
     )
 
